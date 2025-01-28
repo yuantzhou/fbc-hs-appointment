@@ -1,0 +1,22 @@
+{
+  "type": "crm-card",
+  "data": {
+    "title": "Edit Contact / Tax Entity Information",
+    "uid": "fbc_contact_update_card",
+    "location": "crm.record.tab",
+    "module": {
+      "file": "FBCContactUpdateCard.jsx"
+    },
+    "objectTypes": [
+      {
+        "name": "p_fbc_accounts"
+      },
+      {
+        "name": "contacts"
+      },
+      {
+        "name": "p_tax_entities"
+      }
+    ]
+  }
+}

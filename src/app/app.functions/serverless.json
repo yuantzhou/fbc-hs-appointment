@@ -1,0 +1,20 @@
+{
+  "appFunctions": {
+    "contactUpdate": {
+      "file": "fbc-contact-update-function.js",
+      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID"]
+    },
+    "getAssociatedContacts": {
+      "file": "fbc-get-associated-contacts.js",
+      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID","ENVIRONMENT"]
+    },
+    "getDropDownOptions": {
+      "file": "fbc-get-dropdown-options.js",
+      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID"]
+    },
+    "getContactEntityInformation": {
+      "file": "fbc-get-contact-entity-information.js",
+      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID"]
+    }
+  }
+}

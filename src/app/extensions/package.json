@@ -1,0 +1,16 @@
+{
+  "name": "fbc-appointments",
+  "version": "0.1.0",
+  "author": "Ryan",
+  "license": "MIT",
+  "main": "FBCAppointment.jsx",
+  "scripts": {
+    "dev": "hs-ui-extensions-dev-server dev",
+    "build": "hs-ui-extensions-dev-server build"
+  },
+  "dependencies": {
+    "@hubspot/ui-extensions": "^0.8.37",
+    "react": "^18.2.0",
+    "react-datepicker": "^7.5.0"
+  }
+}
