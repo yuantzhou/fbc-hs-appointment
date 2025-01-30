@@ -1,20 +1,39 @@
 {
+  "environment": {
+    "PRIVATE_APP_ACCESS_TOKEN": ""
+  },
   "appFunctions": {
-    "contactUpdate": {
-      "file": "fbc-contact-update-function.js",
-      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID"]
-    },
     "getAssociatedContacts": {
       "file": "fbc-get-associated-contacts.js",
       "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID","ENVIRONMENT"]
     },
     "getDropDownOptions": {
       "file": "fbc-get-dropdown-options.js",
-      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID"]
+      "secrets": []
     },
-    "getContactEntityInformation": {
-      "file": "fbc-get-contact-entity-information.js",
-      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID"]
+    "createAppointment": {
+      "file": "fbc-create-an-appointment.js",
+      "secrets": []
+    },
+    "createAssociation": {
+      "file": "fbc-create-association.js",
+      "secrets": []
+    },
+    "getUserInformation": {
+      "file": "fbc-get-user-availability.js",
+      "secrets": []
+    },
+    "bookMeeting": {
+      "file": "fbc-book-meeting.js",
+      "secrets": []
+    },
+    "getUsers": {
+      "file": "fbc-get-users.js",
+      "secrets": []
+    },
+    "checkDuplicate": {
+      "file": "fbc-check-duplicate.js",
+      "secrets": []
     }
   }
 }

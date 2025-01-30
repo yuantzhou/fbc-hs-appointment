@@ -1,11 +1,11 @@
 {
   "type": "crm-card",
   "data": {
-    "title": "Edit Contact / Tax Entity Information",
-    "uid": "fbc_contact_update_card",
+    "title": "FBC Appointment Booking",
+    "uid": "FBC-Appointment-Booking",
     "location": "crm.record.tab",
     "module": {
-      "file": "FBCContactUpdateCard.jsx"
+      "file": "FBCAppointment.jsx"
     },
     "objectTypes": [
       {

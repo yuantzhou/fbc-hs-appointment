@@ -1,23 +1,14 @@
 {
-  "name": "FBC Custom UI Edit Contact App",
+  "name": "FBC Custom Appointments",
   "description": "This is an example private app that shows a custom card on the Contact record tab built with React-based frontend. This card demonstrates a simple handshake with HubSpot's serverless backend.",
-  "uid": "fbc_contact_update_app",
-  "scopes": [
-    "crm.objects.contacts.read",
-    "crm.objects.contacts.write",
-    "crm.objects.custom.read",
-    "crm.objects.custom.write",
-    "collector.graphql_schema.read",
-    "collector.graphql_query.execute",
-    "crm.schemas.custom.read",
-    "crm.schemas.custom.write"
-  ],
+  "uid": "FBC-Appointment",
+  "scopes": ["crm.objects.contacts.read", "crm.objects.contacts.write","crm.objects.custom.read", "crm.objects.custom.write","collector.graphql_schema.read","collector.graphql_query.execute","crm.objects.users.read","crm.objects.owners.read","scheduler.meetings.meeting-link.read"],
   "public": false,
   "extensions": {
     "crm": {
       "cards": [
         {
-          "file": "extensions/fbc-contact-update-card.json"
+          "file": "extensions/FBC-Appointment.json"
         }
       ]
     }

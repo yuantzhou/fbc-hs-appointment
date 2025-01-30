@@ -4,21 +4,12 @@ exports.main = async (context = {}) => {
     const hubspotClient = new hubspot.Client({
         accessToken: process.env['REACT_APP_ACCESS_TOKEN']
     });
-
-    const { objectType, propertyName } = context.parameters;
-
+    const BatchReadInputPropertyName = { archived: false, inputs: [{"name":"preferred_meeting_location"},{"name":"appointment_type"}] };
+const objectType = "2-37739766"
     try {
-        const apiResponse = await hubspotClient.crm.properties.coreApi.getByName(objectType, propertyName, false, null);
-
-        const{options}=apiResponse;
-
-        const dropDownOptionsRaw = JSON.parse(JSON.stringify(options, null, 2));
-        const dropDownOptions=[];
-        dropDownOptionsRaw.map((item)=>(
-            dropDownOptions.push({label:item.label, value:item.value})
-        ));
-
-        return dropDownOptions;
+        const apiResponse = await hubspotClient.crm.properties.batchApi.read(objectType, BatchReadInputPropertyName);;
+       
+        return apiResponse
 
     } catch (e) {
         e.message === 'HTTP request failed'

@@ -1,7 +1,7 @@
 {
   "name": "fbc-appointments",
   "version": "0.1.0",
-  "author": "Ryan",
+  "author": "Yuan",
   "license": "MIT",
   "main": "FBCAppointment.jsx",
   "scripts": {
