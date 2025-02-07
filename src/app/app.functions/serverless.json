@@ -4,8 +4,7 @@
   },
   "appFunctions": {
     "getAssociatedContacts": {
-      "file": "fbc-get-associated-contacts.js",
-      "secrets": ["REACT_APP_ACCESS_TOKEN","TAX_ENTITY_TYPE_ID","ENVIRONMENT"]
+      "file": "fbc-get-associated-contacts.js"
     },
     "getDropDownOptions": {
       "file": "fbc-get-dropdown-options.js",

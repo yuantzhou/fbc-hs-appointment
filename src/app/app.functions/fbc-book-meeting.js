@@ -14,5 +14,5 @@ exports.main = async (context = {}) => {
       );
       console.log(Object.keys(response))
       console.log(response.data)
-return response
+return response.data
 }

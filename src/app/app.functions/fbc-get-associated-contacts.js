@@ -2,7 +2,7 @@ const hubspot = require('@hubspot/api-client');
 
 exports.main = async (context = {}) => {
     const hubspotClient = new hubspot.Client({
-        accessToken: process.env['REACT_APP_ACCESS_TOKEN']
+        accessToken: process.env['PRIVATE_APP_ACCESS_TOKEN']
     });
 
     const { objectId } = context.parameters;
@@ -23,11 +23,9 @@ const idProperty = undefined;
         let DropdownOption = []
         for(let contact of Contacts){
             const contactCall = await hubspotClient.crm.contacts.basicApi.getById(contact.id, ["firstname","lastname", "email"]);
-            console.log(contactCall.properties.firstname)
             DropdownOption.push({label:contactCall.properties.firstname+" "+contactCall.properties.lastname,value:contactCall.properties.firstname+" "+contactCall.properties.lastname, type:contact.type, contactId:contact.id, 
                                 firstname:contactCall.properties.firstname, lastname: contactCall.properties.lastname, email: contactCall.properties.email})
         }
-
 
         return DropdownOption;
        

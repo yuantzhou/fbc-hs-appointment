@@ -15,6 +15,7 @@ import {
   Form,
   addAlert,
   Select,
+  LoadingSpinner,Divider
 } from "@hubspot/ui-extensions";
 import {
   CrmActionButton,
@@ -58,8 +59,10 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [selectedHost, setSelectedHost] = useState(context.user.firstName+" "+context.user.lastName);
   const [allAvailabilities, setAllAvailability]= useState();
   const [bookingUserInfo, setBookingUserInfo]= useState();
+  const [formattedYear, setFormattedYear]= useState();
   //current availiablity array
   const [availability, setAvailability]= useState();
+  const [working, setWorking]= useState(true);
   const [defaultDate, setDefaultDate]= useState({year:new Date().getFullYear(),month: new Date().getMonth(),date: new Date().getDate()});
   //all Durations
   const [Duration, setDuration] = useState();
@@ -74,12 +77,12 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
           console.log(serverlessResponse)
-          let PContact= serverlessResponse.response.find((element)=>element.type="fbc_primary_contact")
+          let PContact= serverlessResponse.response.find((element)=>element.type=="fbc_primary_contact")
           // [{label:contactCall.properties.firstname,value:contactCall.properties.firstname, type:contact.type, contactId:contact.id}]
           // change in getAssociatedContacts.js for more properties
           PContact.label= PContact.label+ " (Primary Contact)"
           setPrimaryContact(PContact)
-          let CleanOptions=serverlessResponse.response.filter((element)=>element.type=="contact_to_fbc_accounts")
+          let CleanOptions=serverlessResponse.response.filter((element)=>element.type=="contact_to_fbc_accounts"&& element.value!= PContact.value) 
           CleanOptions.push(PContact) 
           setSelectContactOptions(CleanOptions);
           
@@ -178,7 +181,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             let response = serverlessResponse.response.response
             let slug = serverlessResponse.response.slug
             console.log(serverlessResponse.response)
-            setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()]})
+            
             setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
             // subject:"T1 meeting",
           //   duration: 900000,
@@ -205,6 +208,19 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     // if(availability.find((obj) => obj.value!=TimeOption )){
     //   console.log("can't find time")
     // }
+  }
+  const SubmitButton=()=>{
+    if(working){
+      return <Button type="submit" onClick={() => {
+        console.log(`Someone clicked the button!${working}`);
+        setWorking(!working)
+      }}>Create an Appointment </Button>
+    }else{
+      return <LoadingSpinner label="Loading..." />
+    }
+  }
+  const FormatTaxYear=(year)=>{
+    console.log(year)
   }
   return (
     <>
@@ -242,11 +258,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         console.log(selectedContact)
         if(!selectedContact.contactId){
           actions.addAlert({title: "Error Message", message: "Pick a Contact", type: "danger"})
+          setWorking(!working)
         }else{
           console.log("there is a contact")
         if(arrayOfObjectsValues.includes('')){
           // get addAlert from action package
           actions.addAlert({title: "Error Message", message: "Fill out the Form Information", type: "danger"})
+          setWorking(!working)
         }else{
           console.log(arrayOfObjectsValues)
           console.log(availability) 
@@ -254,6 +272,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           console.log(checkDup)
           if(!checkDup.response){
             actions.addAlert({title: "Error Message", message: "There is an Appointment already existing", type: "danger"})
+            setWorking(!working)
           }
           else{
            
@@ -266,22 +285,41 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             console.log(selectedHost)
             // default case
             if(Hosts.find(obj =>obj.label==selectedHost)){
-              console.log({likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
-                legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
-                duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
-                firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug  })
+              // console.log({likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
+              //   legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
+              //   duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
+              //   firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug  })
                 let bookingInfo={likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
                   legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
                   duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
                   firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug }
-                runServerless({ name: 'bookMeeting', parameters: {bookingInfo:bookingInfo } }).then(
-                  (serverlessResponse) => {
-                    if (serverlessResponse.status == 'SUCCESS') {
-                    console.log(Object.keys(serverlessResponse))
-                    console.log(serverlessResponse.response)
-                  }else{
-                    console.log("contact has an invalid email")
-                  }
+                await runServerless({ name: 'bookMeeting', parameters: {bookingInfo:bookingInfo } }).then(
+                  (BookMeetingResponse) => {     
+                   
+                    //run create an appointment and create associations
+                    setTimeout(async() => {
+                      console.log("wait is over searching for the meeting activity");
+                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue]}).then(
+                       async (serverlessResponse) => {
+                          if (serverlessResponse.status == 'SUCCESS') {
+                           console.log(serverlessResponse)
+                           console.log(selectedContact)
+                           await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id,context.crm,selectedContact,BookMeetingResponse.response.calendarEventId]}).then(
+                             (serverlessResponse) => {
+                               if (serverlessResponse.status == 'SUCCESS') {
+                                 console.log(Object.keys(serverlessResponse))
+                                 console.log(serverlessResponse.response)
+                                 setWorking(!working)
+                                 actions.addAlert({title: "Success!", message: "Appointment Has Been Created!", type: "success"})
+                                 }
+                             }
+                             
+                           );
+                           
+                           }
+                       }
+                     );
+                    }, 5000);
                   })
             // selected Host case
             }else{
@@ -293,35 +331,39 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
                   legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
                   duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost.label).properties.hs_standard_time_zone, 
                   firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug }
-                runServerless({ name: 'bookMeeting', parameters: {bookingInfo:bookingInfo } }).then(
-                  (serverlessResponse) => {
-                    if (serverlessResponse.status == 'SUCCESS') {
-                      console.log(Object.keys(serverlessResponse))
-                    }else{
-                      console.log(serverlessResponse)
-                    }
+                await runServerless({ name: 'bookMeeting', parameters: {bookingInfo:bookingInfo } }).then(
+                  (BookMeetingResponse) => {
+                     console.log(BookMeetingResponse.response.calendarEventId)
+                      //run create an appointment and create associations
+                    setTimeout(async() => {
+                      console.log("wait is over searching for the meeting activity");
+                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue]}).then(
+                       async (createAppointmentResponse) => {
+                          if (createAppointmentResponse.status == 'SUCCESS') {
+                       
+                           await runServerless({ name: 'createAssociation', parameters: [createAppointmentResponse.response.id,context.crm,selectedContact,BookMeetingResponse.response.calendarEventId]}).then(
+                             (AssociationResponse) => {
+                               if (AssociationResponse.status == 'SUCCESS') {
+                                 console.log(Object.keys(AssociationResponse))
+                                 console.log(AssociationResponse.response)
+                                 setWorking(!working)
+                                 actions.addAlert({title: "Success!", message: "Appointment Has Been Created!", type: "success"})
+                                 }
+                             }
+                             
+                           );
+                           
+                           }
+                       }
+                     );
+                    }, 5000);
                   })
             }
-            
-         
+              console.log("meeting activity is created ")
+              //time out function to wait for the meeting activity to log 
+             
              //createAppointment first then create assoication after with the created appointment Id, because hubspot is broken
-             await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue]}).then(
-             (serverlessResponse) => {
-               if (serverlessResponse.status == 'SUCCESS') {
-                console.log(serverlessResponse)
-                console.log(selectedContact)
-                runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id,context.crm,selectedContact]}).then(
-                  (serverlessResponse) => {
-                    if (serverlessResponse.status == 'SUCCESS') {
-                      console.log(Object.keys(serverlessResponse))
-                      console.log(serverlessResponse.response)
-                      }
-                  }
-                );
-                
-                }
-            }
-          );
+            
           }
           else{
             actions.addAlert({title: "Error Message", message: "Pick a Valid Time!", type: "danger"})
@@ -336,10 +378,12 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
-          <NumberInput label="Tax term"
+          <NumberInput label="Tax Year"
           name="TaxTerm"
           min={new Date().getFullYear()-10}
           max={new Date().getFullYear()+1}
+          formatStyle= 'decimal'
+          precision= {0}
           ></NumberInput>
           <Select
          label="Host"
@@ -387,7 +431,8 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
-        <Button type="submit" >Create an Appointment </Button>
+          <Divider />
+          {SubmitButton()}
         </Form>
        
           {/* <Text ref={Ref}>write something here</Text> */}
