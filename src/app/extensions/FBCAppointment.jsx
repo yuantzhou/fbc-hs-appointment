@@ -67,8 +67,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   //all Durations
   const [Duration, setDuration] = useState();
   //current Duration
-  const [cDuration, setCDuration] = useState("10800000");
+  const [cDuration, setCDuration] = useState("");
   const [pickedTime, setPickedTime] = useState();
+  //validationMessage 
+  const [yearValidationMessage, setYearValidationMessage] = useState('');
+  const [yearIsValid, setYearIsValid] = useState(true);
+  const [HostValidationMessage, setHostValidationMessage] = useState('');
+  const [HostIsValid, setHostIsValid] = useState(true);
   
   //get AssociatedContacts
   useEffect(async () => {
@@ -128,15 +133,27 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           console.log(serverlessResponse.response.response)
           let response = serverlessResponse.response.response
           let slug = serverlessResponse.response.slug
-          let ThreeHourAva= response.linkAvailability.linkAvailabilityByDuration["10800000"].availabilities
-          ThreeHourAva.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
-          setAllAvailability(response.linkAvailability.linkAvailabilityByDuration)
-          console.log(ThreeHourAva)
-          setAvailability(ThreeHourAva.filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==selectedDate.formattedDate ) )
-          let Durations = Object.keys(response.linkAvailability.linkAvailabilityByDuration)
-          let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
-          setDuration(DurationsObjectArray)
-          setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
+          if(response.linkAvailability["10800000"]){
+            console.log("there a three hour default")
+            let ThreeHourAva= response.linkAvailability.linkAvailabilityByDuration["10800000"].availabilities
+            ThreeHourAva.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+            setAllAvailability(response.linkAvailability.linkAvailabilityByDuration)
+            console.log(ThreeHourAva)
+            setAvailability(ThreeHourAva.filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==selectedDate.formattedDate ) )
+            let Durations = Object.keys(response.linkAvailability.linkAvailabilityByDuration)
+            let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
+            setDuration(DurationsObjectArray)
+            setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
+          }else{
+            console.log("please have a 3 hour default")
+            let Durations = Object.keys(response.linkAvailability.linkAvailabilityByDuration)
+            let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
+            setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
+            setDuration(DurationsObjectArray)
+            setAllAvailability(response.linkAvailability.linkAvailabilityByDuration)
+          }
+            
+          
         }
       })
     console.log(selectedDate)
@@ -144,11 +161,23 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   //on Date change
   const setDate = (date) => {
     setSelectedDate(date)
-    let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
-    availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
-  
-    setAvailability(availabilitiesObjectArray
-      .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+    if(allAvailabilities[cDuration]){
+      let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
+      availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+    
+      setAvailability(availabilitiesObjectArray
+        .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+    }else{
+      let availabilitiesObjectArray=[]
+      let durations= Object.keys(allAvailabilities)
+      for(let Duration of durations){
+        let ObjectArray = allAvailabilities[Duration].availabilities
+        ObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+        availabilitiesObjectArray.push(...ObjectArray)
+      }
+      setAvailability(availabilitiesObjectArray
+        .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+    }
       
   };
   //on Duration Change
@@ -181,6 +210,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             let response = serverlessResponse.response.response
             let slug = serverlessResponse.response.slug
             console.log(serverlessResponse.response)
+            if (serverlessResponse.response=="calendar not connected"){
+              setHostIsValid(false)
+              setHostValidationMessage('This User have not set up their calendar');
+            }else{
+              setHostIsValid(true)
+              setHostValidationMessage('Validate User');
+            }
             
             setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
             // subject:"T1 meeting",
@@ -219,9 +255,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       return <LoadingSpinner label="Loading..." />
     }
   }
-  const FormatTaxYear=(year)=>{
-    console.log(year)
-  }
+ 
   return (
     <>
       <Tile compact={true}>
@@ -261,7 +295,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           setWorking(!working)
         }else{
           console.log("there is a contact")
-        if(arrayOfObjectsValues.includes('')){
+        if(arrayOfObjectsValues.includes('')||yearIsValid==false){
           // get addAlert from action package
           actions.addAlert({title: "Error Message", message: "Fill out the Form Information", type: "danger"})
           setWorking(!working)
@@ -378,18 +412,32 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
-          <NumberInput label="Tax Year"
+          <Input label="Tax Year"
           name="TaxTerm"
-          min={new Date().getFullYear()-10}
-          max={new Date().getFullYear()+1}
-          formatStyle= 'decimal'
-          precision= {0}
-          ></NumberInput>
+          error={!yearIsValid}
+        validationMessage={yearValidationMessage}
+          onInput={(value) => {
+            let currentYear = new Date().getFullYear().toString()
+            let UpperLimit = new Number(currentYear)+1
+              let first = currentYear.substring(2, 3);
+              console.log(first)
+            let second = new Number(currentYear.substring(3, 4))+1;
+            if (value.search(new RegExp(`^(201[5-9]|20[${first}][0-${second}])$`))<0) {
+              setYearValidationMessage('Please Enter a Number between 2015 to '+UpperLimit);
+              setYearIsValid(false);
+            }else{
+              setYearValidationMessage('Valid Year');
+              setYearIsValid(true);
+            }
+          }}
+          ></Input>
           <Select
          label="Host"
           name="Host"
             options={Hosts}
             onChange={(e)=>handleSelectedHost(e)}
+            error={!HostIsValid}
+            validationMessage={HostValidationMessage}
             value= {selectedHost}
             variant="primary"
             buttonSize="md"
@@ -424,7 +472,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonText="More"
           ></Select>
           <Select
-         label="PreferredMeetingLocation?"
+         label="Preferred Meeting Location?"
           name="PreferredMeetingLocation"
             options={PreferredMeetingLocation}
             variant="primary"
