@@ -1,6 +1,6 @@
-import React, { forwardRef, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
-import { useRef } from 'react';
+
 import {
   Button,
   Text,
@@ -17,13 +17,7 @@ import {
   Select,
   LoadingSpinner,Divider
 } from "@hubspot/ui-extensions";
-import {
-  CrmActionButton,
-  CrmActionLink,
-  CrmCardActions,
-} from '@hubspot/ui-extensions/crm';
-import Day from "react-datepicker/dist/day";
-import { newDate } from "react-datepicker/dist/date_utils";
+import { CrmActionButton } from '@hubspot/ui-extensions/crm';
 
 
 // Define the extension to be run within the Hubspot CRM
@@ -85,11 +79,19 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           let PContact= serverlessResponse.response.find((element)=>element.type=="fbc_primary_contact")
           // [{label:contactCall.properties.firstname,value:contactCall.properties.firstname, type:contact.type, contactId:contact.id}]
           // change in getAssociatedContacts.js for more properties
-          PContact.label= PContact.label+ " (Primary Contact)"
-          setPrimaryContact(PContact)
-          let CleanOptions=serverlessResponse.response.filter((element)=>element.type=="contact_to_fbc_accounts"&& element.value!= PContact.value) 
-          CleanOptions.push(PContact) 
-          setSelectContactOptions(CleanOptions);
+          if(PContact){
+            PContact.label= PContact.label+ " (Primary Contact)"
+            setPrimaryContact(PContact)
+            setSelectedContact(PContact)
+            let CleanOptions=serverlessResponse.response.filter((element)=>element.type=="contact_to_fbc_accounts"&& element.value!= PContact.value) 
+            CleanOptions.push(PContact) 
+            setSelectContactOptions(CleanOptions);
+          }else{
+            let CleanOptions=serverlessResponse.response.filter((element)=>element.type=="contact_to_fbc_accounts")
+            setSelectContactOptions(CleanOptions);
+          }
+          
+         
           
         }
       }
@@ -159,12 +161,81 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     console.log(selectedDate)
   }, []);
   //on Date change
-  const setDate = (date) => {
+  const setDate = async(date) => {
+    console.log(date)
+    setPickedTime()
+    if(!date){
+     setAvailability()
+    }else{
     setSelectedDate(date)
+    // console.log(date.month-new Date().getMonth())
+    // console.log(selectedHost)
+    // console.log(`${date.year}-${date.month+1}-${date.date}`)
+    
+    
+    if (selectedHost==context.user.firstName+" "+context.user.lastName){
+    await runServerless({ name: 'getUserInformation', parameters: { context:context, monthOffset: date.month-new Date().getMonth()} }).then(
+      (serverlessResponse) => {
+        if (serverlessResponse.status == 'SUCCESS') {
+          setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
+          
+          if(cDuration){
+            let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
+            availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+              
+            setAvailability(availabilitiesObjectArray
+              .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+          }else{
+            let availabilitiesObjectArray=[]
+      let durations= Object.keys(allAvailabilities)
+      for(let Duration of durations){
+        let ObjectArray = allAvailabilities[Duration].availabilities
+        ObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+        availabilitiesObjectArray.push(...ObjectArray)
+      }
+      setAvailability(availabilitiesObjectArray
+        .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+          }
+          
+        }
+      }
+    )}
+    else{
+      let rightObject= Hosts.find((element)=>element.value==selectedHost.label)
+      setSelectedHost(rightObject)
+      //console.log(selectedHost)
+        
+      await runServerless({ name: 'getUserInformation', parameters: { context:context, monthOffset: date.month-new Date().getMonth(),Host: rightObject} }).then(
+        (serverlessResponse) => {
+          if (serverlessResponse.status == 'SUCCESS') {
+            setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
+            console.log(cDuration)
+            if(cDuration){
+              let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
+              availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+                
+              setAvailability(availabilitiesObjectArray
+                .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+            }else{
+              let availabilitiesObjectArray=[]
+        let durations= Object.keys(allAvailabilities)
+        for(let Duration of durations){
+          let ObjectArray = allAvailabilities[Duration].availabilities
+          ObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+          availabilitiesObjectArray.push(...ObjectArray)
+        }
+        setAvailability(availabilitiesObjectArray
+          .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+            }
+          
+          }
+        }
+      )
+    }
     if(allAvailabilities[cDuration]){
       let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
       availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
-    
+        
       setAvailability(availabilitiesObjectArray
         .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
     }else{
@@ -178,7 +249,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       setAvailability(availabilitiesObjectArray
         .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
     }
-      
+  }
   };
   //on Duration Change
   const changeDuration = (duration) => {
@@ -219,6 +290,10 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             }
             
             setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
+            let Durations = Object.keys(response.linkAvailability.linkAvailabilityByDuration)
+            let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
+            setAllAvailability(response.linkAvailability.linkAvailabilityByDuration)
+            setDuration(DurationsObjectArray)
             // subject:"T1 meeting",
           //   duration: 900000,
           //   firstName: 'Yuan',
@@ -328,16 +403,18 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
                   duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
                   firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug }
                 await runServerless({ name: 'bookMeeting', parameters: {bookingInfo:bookingInfo } }).then(
-                  (BookMeetingResponse) => {     
-                   
+                  async (BookMeetingResponse) => {     
+                 
                     //run create an appointment and create associations
-                    setTimeout(async() => {
+                    
                       console.log("wait is over searching for the meeting activity");
-                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue]}).then(
+                      //
+                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue,context.crm,BookMeetingResponse]}).then(
                        async (serverlessResponse) => {
                           if (serverlessResponse.status == 'SUCCESS') {
                            console.log(serverlessResponse)
                            console.log(selectedContact)
+                           setWorking(!working)
                            await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id,context.crm,selectedContact,BookMeetingResponse.response.calendarEventId]}).then(
                              (serverlessResponse) => {
                                if (serverlessResponse.status == 'SUCCESS') {
@@ -352,9 +429,8 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
                            
                            }
                        }
-                     );
-                    }, 5000);
-                  })
+                     ); 
+                    })
             // selected Host case
             }else{
               console.log({likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
@@ -401,6 +477,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           }
           else{
             actions.addAlert({title: "Error Message", message: "Pick a Valid Time!", type: "danger"})
+            setWorking(!working)
           }
         }
         }}
@@ -444,7 +521,10 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonText="More"
           ></Select>
           
-        <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} />
+        <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
+        min={ {year: new Date ().getFullYear(), month: new Date ().getMonth(), date: new Date ().getDate()} }
+         max={{year: new Date ().getFullYear()+1, month: new Date ().getMonth()+6, date: new Date ().getDate()} } 
+          format="YYYY-MM-DD"/>
         {/* {/* <Flex direction="row" align="end" gap="extra-small">
           <NumberInput name="StartHour" label="StartHour" description="(24Hour Format 0=MidNight)" required="true" min={0} max={23} />
           <NumberInput name="StartMinute" label="StartMinute" required="true" min={0} max={59}  />
@@ -485,6 +565,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
        
           {/* <Text ref={Ref}>write something here</Text> */}
       </Tile>
+   
       
 
    

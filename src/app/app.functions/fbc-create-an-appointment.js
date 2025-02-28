@@ -10,7 +10,7 @@ exports.main = async (context = {}) => {
     accessToken: process.env['PRIVATE_APP_ACCESS_TOKEN']
 });
 
- //[0] for contact information [1] for form information 
+ //[0] for contact information [1] for form information [2] context.crm [3] for booking information calendarEvent ID ${context.parameters[2]}
   const passInDate=  context.parameters[1].StartDate
  const Hour= new Date(new Number(context.parameters[1].PickATime)).getHours()
  const min= new Date(new Number(context.parameters[1].PickATime)).getMinutes()
@@ -42,25 +42,44 @@ exports.main = async (context = {}) => {
     "appointment_type": context.parameters[1].AppointmentType,
     "appointment_deadline": deadline,
     "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
-    "fbc_tax_term": context.parameters[1].TaxTerm
+    "fbc_tax_term": context.parameters[1].TaxTerm,
+    "calendar_event_id": context.parameters[3].response.calendarEventId
   };
 //  //514 is ad hoc association to the account 
   const SimplePublicObjectInputForCreate = { associations: [{"types":[{"associationCategory":"USER_DEFINED","associationTypeId":508},{"associationCategory":"USER_DEFINED","associationTypeId":514}],"to":{"id":"19997413735"}}], objectWriteTraceId: "string", properties };
 //fbc appointment object id 
    const objectType = "2-37739766";
   
-  
+   
   
   try {
     const apiResponse = await hubspotClient.crm.objects.basicApi.create(objectType, SimplePublicObjectInputForCreate);
-    
+    let AppointmentID =JSON.parse(JSON.stringify(apiResponse, null, 2)).id;
+    const BatchInputPublicAssociation = { inputs: [{"_from":{"id":AppointmentID},"to":{"id":context.parameters[2].objectId},"type":"514"}] };
+    // fbc appointment object 
+    const fromObjectType = "2-37739766";
+    //
+    const toObjectType = context.parameters[2].objectTypeId;
+    //only work with two object of the same type (e.g two company to assoicate), but can't associate to a different obect type (e.g) associate to a company and contact 
+const BatchInputPublicAssociation2 = { inputs: [{"_from":{"id":AppointmentID},"to":{"id":context.parameters[0].contactId},"type":"476"}] };
+
+  try {
+    const apiResponse = await hubspotClient.crm.associations.batchApi.create(fromObjectType, toObjectType, BatchInputPublicAssociation);
+    //for contact 
+    const apiResponse2 = await hubspotClient.crm.associations.batchApi.create(fromObjectType, "0-1", BatchInputPublicAssociation2);
+   
+  } catch (e) {
+    e.message === 'HTTP request failed'
+      ? console.error(JSON.stringify(e.response, null, 2))
+      : console.error(e)
+  }
     return apiResponse;
   } catch (e) {
     e.message === 'HTTP request failed'
       ? console.error(JSON.stringify(e.response, null, 2))
       : console.error(e)
   }
-  
+ 
   
  
   
