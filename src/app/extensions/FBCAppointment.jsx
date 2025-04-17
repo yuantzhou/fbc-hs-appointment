@@ -18,6 +18,7 @@ import {
   LoadingSpinner,Divider
 } from "@hubspot/ui-extensions";
 import { CrmActionButton } from '@hubspot/ui-extensions/crm';
+import { setDefaultLocale } from "react-datepicker";
 
 
 // Define the extension to be run within the Hubspot CRM
@@ -47,6 +48,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [primaryContact, setPrimaryContact]= useState({});
   const [selectContactOptions, setSelectContactOptions] = useState([]);
   const [appointmentType,setAppointmentType]=useState([]);
+  const [appointmentSubType,setAppointmentSubType]=useState([]);
   const [PreferredMeetingLocation,setPreferredMeetingLocation]=useState([]);
   const [Hosts, setHosts] = useState([]);
   const [selectedDate, setSelectedDate] = useState({formattedDate:new Date().toISOString().substring(0,10)});
@@ -54,6 +56,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [allAvailabilities, setAllAvailability]= useState();
   const [bookingUserInfo, setBookingUserInfo]= useState();
   const [formattedYear, setFormattedYear]= useState();
+  const [defaultSlug, setDefaultSlug]= useState();
   //current availiablity array
   const [availability, setAvailability]= useState();
   const [working, setWorking]= useState(true);
@@ -104,13 +107,32 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
           console.log(serverlessResponse.response)
-          setAppointmentType(serverlessResponse.response.results[1].options)
+          //setAppointmentType(serverlessResponse.response.results[1].options)
           setPreferredMeetingLocation(serverlessResponse.response.results[0].options)
         }
       }
     );
     console.log(selectedContact)
   }, []); 
+  //get information from hubDB
+  useEffect(() => {
+    runServerless({ name: 'getHubDB' }).then(
+      (serverlessResponse) => {
+        if (serverlessResponse.status == 'SUCCESS') {
+          console.log(serverlessResponse.response)
+          let meetingTypeTable= serverlessResponse.response.results.find(obj=>obj.name.includes("meeting_types"))
+          let meetingTypeOptions= meetingTypeTable.columns.find(obj=>obj.name.includes("meeting_type_code")).options
+          meetingTypeOptions.map(obj => ( obj.label= obj.name, obj.value=obj.name ))
+          console.log(meetingTypeOptions)
+          setAppointmentType(meetingTypeOptions)
+          
+          
+          setAppointmentType(meetingTypeOptions)
+          setAppointmentSubType()
+        }
+      }
+    );
+  }, []);
 //get Users 
   useEffect(async() => {
     await runServerless({ name: 'getUsers'}).then(
@@ -135,6 +157,8 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           console.log(serverlessResponse.response.response)
           let response = serverlessResponse.response.response
           let slug = serverlessResponse.response.slug
+          console.log(slug)
+          setDefaultSlug(slug)
           if(response.linkAvailability["10800000"]){
             console.log("there a three hour default")
             let ThreeHourAva= response.linkAvailability.linkAvailabilityByDuration["10800000"].availabilities
@@ -178,7 +202,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
           setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
-          
+         
           if(cDuration){
             let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
             availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
@@ -280,6 +304,8 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           if (serverlessResponse.status == 'SUCCESS') {
             let response = serverlessResponse.response.response
             let slug = serverlessResponse.response.slug
+            // current slug = default meeting
+            rightObject.slug= slug
             console.log(serverlessResponse.response)
             if (serverlessResponse.response=="calendar not connected"){
               setHostIsValid(false)
@@ -330,6 +356,33 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       return <LoadingSpinner label="Loading..." />
     }
   }
+  const openMeetingLinkInterface = () => { 
+    console.log(selectedHost)
+    console.log(defaultSlug)
+    if (selectedHost==context.user.firstName+" "+context.user.lastName){
+      openIframe({
+        uri: `https://meetings.hubspot.com/${defaultSlug}?firstname=${selectedContact.firstname}&lastname=${selectedContact.lastname}&email=${selectedContact.email}&hs_activity_type=T1`, // this is a relative link. Some links will be blocked since they don't allow iframing
+        height: 1000,
+        width: 1000,
+        title: 'Meeting Interface',
+        flush: true,
+        
+      },()=>console.log('This message will display upon closing the modal.')
+    );
+    }
+    else{
+      openIframe({
+        uri: `https://meetings.hubspot.com/${selectedHost.slug}?firstname=${selectedContact.firstname}&lastname=${selectedContact.lastname}&email=${selectedContact.email}&hs_activity_type=T1`, // this is a relative link. Some links will be blocked since they don't allow iframing
+        height: 1000,
+        width: 1000,
+        title: 'Meeting Interface',
+        flush: true,
+        
+      },()=>console.log('This message will display upon closing the modal.')
+    );
+    }
+    
+  };
  
   return (
     <>
@@ -489,6 +542,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
+          <Select
+          name="Appointment Sub Type"
+            options={appointmentSubType}
+            variant="primary"
+            buttonSize="md"
+            buttonText="More"
+          ></Select>
           <Input label="Tax Year"
           name="TaxTerm"
           error={!yearIsValid}
@@ -520,8 +580,21 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
+          <Select
+         label="Preferred Meeting Location?"
+          name="PreferredMeetingLocation"
+            options={PreferredMeetingLocation}
+            variant="primary"
+            buttonSize="md"
+            buttonText="More"
+          ></Select>
+            <Divider />
+          <Button onClick={openMeetingLinkInterface}>
+            MeetingTimeInterface
+          </Button>
+  
           
-        <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
+        {/* <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
         min={ {year: new Date ().getFullYear(), month: new Date ().getMonth(), date: new Date ().getDate()} }
          max={{year: new Date ().getFullYear()+1, month: new Date ().getMonth()+6, date: new Date ().getDate()} } 
           format="YYYY-MM-DD"/>
@@ -529,7 +602,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           <NumberInput name="StartHour" label="StartHour" description="(24Hour Format 0=MidNight)" required="true" min={0} max={23} />
           <NumberInput name="StartMinute" label="StartMinute" required="true" min={0} max={59}  />
         </Flex> */}
-        <Select
+        {/* <Select
          label="Duration"
           name="Duration"
           description="in Minutes"
@@ -540,8 +613,8 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             variant="primary"
             buttonSize="md"
             buttonText="More"
-          ></Select>
-          <Select
+          ></Select> */}
+          {/* <Select
          label="Pick a Time"
           name="PickATime"
           value={pickedTime}
@@ -550,17 +623,10 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             variant="primary"
             buttonSize="md"
             buttonText="More"
-          ></Select>
-          <Select
-         label="Preferred Meeting Location?"
-          name="PreferredMeetingLocation"
-            options={PreferredMeetingLocation}
-            variant="primary"
-            buttonSize="md"
-            buttonText="More"
-          ></Select>
-          <Divider />
-          {SubmitButton()}
+          ></Select>  */}
+          
+          {/* <Divider />
+          {SubmitButton()} */}
         </Form>
        
           {/* <Text ref={Ref}>write something here</Text> */}

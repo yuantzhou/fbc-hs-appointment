@@ -33,6 +33,10 @@
     "checkDuplicate": {
       "file": "fbc-check-duplicate.js",
       "secrets": []
+    },
+    "getHubDB": {
+      "file": "fbc_get_hubDB.js",
+      "secrets": []
     }
   }
 }
