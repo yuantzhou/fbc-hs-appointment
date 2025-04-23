@@ -19,7 +19,13 @@ import {
   Divider,
   List,
 ButtonRow,
-Box 
+Box, 
+TextArea,Table,
+TableHead,
+TableRow,
+TableHeader,
+TableBody,
+TableCell,
   
 } from "@hubspot/ui-extensions";
 import { CrmActionButton } from '@hubspot/ui-extensions/crm';
@@ -53,7 +59,11 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [primaryContact, setPrimaryContact]= useState({});
   const [selectContactOptions, setSelectContactOptions] = useState([]);
   const [appointmentType,setAppointmentType]=useState([]);
-  const [appointmentSubType,setAppointmentSubType]=useState([]);
+  const [selectedAppointmentType,setselectedAppointmentType]=useState();
+  const [appointmentSubType,setAppointmentSubType]=useState([{option:"subTypeTest",value:"subTypeTest"}]);
+  const [selectedsubAppointmentType,setselectedsubAppointmentType]=useState();
+  const [MeetingLoction,setMeetingLocation]=useState([]);
+  
   const [PreferredMeetingLocation,setPreferredMeetingLocation]=useState([{option:"Virtual",value:"Virtual"},{option:"In Person",value:"In Person"},{option:"Phone Call",value:"Phone Call"},{option:"Custom",value:"Custom"}]);
   const [Hosts, setHosts] = useState([]);
   const [selectedDate, setSelectedDate] = useState({formattedDate:new Date().toISOString().substring(0,10)});
@@ -165,7 +175,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           
           
           setAppointmentType(meetingTypeOptions)
-          setAppointmentSubType()
+          
         }
       }
     );
@@ -450,7 +460,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
    const handleAvailability=(TimeOption)=>{
    
     setPickedTime(TimeOption)
-     console.log(pickedTime)
+     console.log(TimeOption)
     // let test =availability.find((obj) => obj.value==TimeOption )
     // console.log(test)
     // if(availability.find((obj) => obj.value!=TimeOption )){
@@ -501,6 +511,63 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       return <LoadingSpinner label="Loading..." />
     }
   }
+  const renderLocation=()=>{
+    let Meetingtitle= `${selectedAppointmentType}-${selectedsubAppointmentType} with ${selectedContact.firstname} ${selectedContact.lastname}`
+        
+    if(MeetingLoction){
+      if(MeetingLoction=="Virtual"){
+        console.log(selectedContact)
+        
+        return <Tile>
+          <TextArea label="Meeting Title"
+        name="Meeting Title" value={Meetingtitle}></TextArea>
+         
+        <TextArea label="Meeting Desciption"
+        name="MeetingDesciption"value=""></TextArea>
+        </Tile>
+      }
+      else if(MeetingLoction=="In Person") {
+        return<Tile>
+        <TextArea label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></TextArea>
+      <TextArea label="Meeting Desciption"
+      name="MeetingDesciption"value=""></TextArea>
+      <TextArea label="Meeting Address"
+      name="MeetingAddress"value={selectedContact.address}></TextArea>
+      </Tile>
+      }
+      else if(MeetingLoction=="Phone Call"){
+        return<Tile>
+        <TextArea label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></TextArea>
+       <TextArea label="Meeting Type"
+      name="MeetingType"value="Phone Call"></TextArea>
+      <TextArea label="Meeting Desciption"
+      name="MeetingDesciption"value=""></TextArea>
+      <TextArea label="Phone Number"
+      name="PhoneNumber"value={selectedContact.phone}></TextArea>
+      </Tile>
+      }
+      else if(MeetingLoction=="Custom"){
+        return<Tile>
+        <TextArea label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></TextArea>
+       
+      <TextArea label="Meeting Desciption"
+      name="MeetingDesciption"value=""></TextArea>
+      </Tile>
+      }
+    }
+  }
+  function createRows(array, elementsPerRow) {
+    const result = [];
+    for (let i = 0; i < array.length; i += elementsPerRow) {
+      result.push(array.slice(i, i + elementsPerRow));
+    }
+    return result;
+  }
+  
+
   const renderAvailableTime=()=>{
     if(availability){
       // return availability.map(obj=> <Button onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
@@ -509,19 +576,20 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
          if(pickedTime){
            for(let ava of availability){
              if(ava.value==pickedTime){
-              avajsx.push(<Box flex={1} alignSelf="stretch"><Button class="duration" variant="primary" onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
-            </Button></Box>)
+              avajsx.push(<TableCell><Box flex={1} alignSelf="stretch"><Button class="duration" variant="primary" onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
+            </Button></Box></TableCell>)
              }else{
-              avajsx.push(<Box flex={1} alignSelf="stretch"><Button class="duration" onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
-            </Button></Box>)}
+              avajsx.push(<TableCell><Box flex={1} alignSelf="stretch"><Button class="duration" variant="transparent"onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
+            </Button></Box></TableCell>)}
            }
            
          }else{
-          avajsx=availability.map(obj=> <Box flex={1} alignSelf="stretch"><Button class="duration" onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
-            </Button></Box>)
+          avajsx=availability.map(obj=><TableCell> <Box flex={1} alignSelf="stretch"><Button class="duration"   variant="transparent"onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
+            </Button></Box></TableCell>)
          }
-         
-         return avajsx
+         let RowInsert=createRows(avajsx,5)
+         RowInsert.map(array=> array.splice(0, 0, <TableRow></TableRow>))
+         return RowInsert
     }else{
       return <LoadingSpinner label="Loading..." />
     }
@@ -612,7 +680,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           else{
            
           // check if the availability is valid       
-          if(availability.find((obj) => obj.value==arrayOfObjectsValues[5])){
+          if(availability.find((obj) => obj.value==pickedTime)){
             
             console.log("valid entry")
             console.log(Hosts[0])
@@ -711,6 +779,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         <Select
           name="AppointmentType"
             options={appointmentType}
+            onChange={(e)=>setselectedAppointmentType(e)}
             variant="primary"
             buttonSize="md"
             buttonText="More"
@@ -719,6 +788,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           name="Appointment Sub Type"
           label="Appointment Sub Type"
             options={appointmentSubType}
+            onChange={(e)=>setselectedsubAppointmentType(e)}
             variant="primary"
             buttonSize="md"
             buttonText="More"
@@ -758,14 +828,21 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
          label="Preferred Meeting Location?"
           name="PreferredMeetingLocation"
             options={PreferredMeetingLocation}
+            onChange={(value) => {
+              setMeetingLocation(value);
+              }}
             variant="primary"
             buttonSize="md"
             buttonText="More"
           ></Select>
+            {
+              renderLocation()
+            }
+          
             <Divider />
-          <Button onClick={openMeetingLinkInterface}>
+          {/* <Button onClick={openMeetingLinkInterface}>
             MeetingTimeInterface
-          </Button>
+          </Button> */}
   
           
         <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
@@ -796,17 +873,17 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           ></Select> */}
           <Divider />
           <Text>Available Duration</Text>
-          {/* <List variant="inline-divided">
+          <List variant="inline-divided">
             {
               renderDurationList()
             }
-      </List> */}
-      <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
+      </List>
+      {/* <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
       {
               renderDurationList()
             }
-      </Flex>
-     
+      </Flex> */}
+      
       
            {/* <Select
          label="Pick a Time"
@@ -820,11 +897,24 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           ></Select>   */}
           <Divider />
           <Text>Available Time</Text>
-          <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
+          
+      <Table bordered={false} paginated={false} >
+      <TableHead>
+        
+        <TableBody>
+        
+            {
+               renderAvailableTime()
+            }
+      
+        </TableBody>
+      </TableHead>
+      </Table>
+          {/* <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
             {
               renderAvailableTime()
             }
-</Flex>
+</Flex> */}
            <Divider />
           {SubmitButton()}
         </Form>
