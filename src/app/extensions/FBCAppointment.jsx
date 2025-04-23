@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-
+import "./Appointment.css";
 import {
   Button,
   Text,
@@ -15,7 +15,12 @@ import {
   Form,
   addAlert,
   Select,
-  LoadingSpinner,Divider
+  LoadingSpinner,
+  Divider,
+  List,
+ButtonRow,
+Box 
+  
 } from "@hubspot/ui-extensions";
 import { CrmActionButton } from '@hubspot/ui-extensions/crm';
 import { setDefaultLocale } from "react-datepicker";
@@ -49,7 +54,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [selectContactOptions, setSelectContactOptions] = useState([]);
   const [appointmentType,setAppointmentType]=useState([]);
   const [appointmentSubType,setAppointmentSubType]=useState([]);
-  const [PreferredMeetingLocation,setPreferredMeetingLocation]=useState([]);
+  const [PreferredMeetingLocation,setPreferredMeetingLocation]=useState([{option:"Virtual",value:"Virtual"},{option:"In Person",value:"In Person"},{option:"Phone Call",value:"Phone Call"},{option:"Custom",value:"Custom"}]);
   const [Hosts, setHosts] = useState([]);
   const [selectedDate, setSelectedDate] = useState({formattedDate:new Date().toISOString().substring(0,10)});
   const [selectedHost, setSelectedHost] = useState(context.user.firstName+" "+context.user.lastName);
@@ -57,6 +62,50 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [bookingUserInfo, setBookingUserInfo]= useState();
   const [formattedYear, setFormattedYear]= useState();
   const [defaultSlug, setDefaultSlug]= useState();
+  const [TimeZone, setTimeZone]= useState();
+  const [TimeZoneOptions, setTimeZoneOptions]= useState([
+    {
+      label: '(UTC-08:00) Pacific Time - Vancouver',
+      onClick: () => setTimeZone('(UTC-08:00)')
+    },
+    {
+      label: '(UTC-07:00) Mountain Time - Edmonton',
+      onClick: () => setTimeZone('(UTC-07:00)')
+    },
+    {
+      label: '(UTC-06:00) Central Time - Winnipeg',
+      onClick: () => setTimeZone('(UTC-06:00)')
+    },
+    {
+      label: '(UTC-05:00) Eastern Time - Toronto',
+      onClick: () => setTimeZone('(UTC-05:00)')
+    },
+    {
+      label: '(UTC-04:00) Atlantic Time - Halifax',
+      onClick: () => setTimeZone('(UTC-04:00)')
+    },
+    {
+      label: "(UTC-03:30) Newfoundland Time - St. John's",
+      onClick: () => setTimeZone('(UTC-03:30)')
+    },
+    {
+      label: '(UTC-07:00) Mountain Time - Yellowknife',
+      onClick: () => setTimeZone('(UTC-07:00)')
+    },
+    {
+      label: '(UTC-06:00) Central Time - Regina (no DST)',
+      onClick: () => setTimeZone('(UTC-06:00)')
+    },
+    {
+      label: '(UTC-05:00) Eastern Time - Iqaluit',
+      onClick: () => setTimeZone('(UTC-05:00)')
+    },
+    {
+      label: '(UTC-05:00) Eastern Time - Montreal',
+      onClick: () => setTimeZone('(UTC-05:00)')
+    }
+  ]
+)
   //current availiablity array
   const [availability, setAvailability]= useState();
   const [working, setWorking]= useState(true);
@@ -101,19 +150,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     );
    
   }, []);
-  //get Appointment Dropdown
-  useEffect(() => {
-    runServerless({ name: 'getDropDownOptions' }).then(
-      (serverlessResponse) => {
-        if (serverlessResponse.status == 'SUCCESS') {
-          console.log(serverlessResponse.response)
-          //setAppointmentType(serverlessResponse.response.results[1].options)
-          setPreferredMeetingLocation(serverlessResponse.response.results[0].options)
-        }
-      }
-    );
-    console.log(selectedContact)
-  }, []); 
+  
   //get information from hubDB
   useEffect(() => {
     runServerless({ name: 'getHubDB' }).then(
@@ -143,6 +180,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           console.log(HostsObjectArray)
           setHosts(HostsObjectArray)
           console.log(selectedHost)
+          setTimeZone(HostsObjectArray.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone)
         }
       }
     );
@@ -169,6 +207,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             let Durations = Object.keys(response.linkAvailability.linkAvailabilityByDuration)
             let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
             setDuration(DurationsObjectArray)
+            setCDuration(DurationsObjectArray[0].value)
             setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
           }else{
             console.log("please have a 3 hour default")
@@ -176,7 +215,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
             setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
             setDuration(DurationsObjectArray)
+            setCDuration(DurationsObjectArray[0].value)
             setAllAvailability(response.linkAvailability.linkAvailabilityByDuration)
+            let availabilitiesObjectArray = response.linkAvailability.linkAvailabilityByDuration[Durations[0]].availabilities
+            availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
+            setAvailability(availabilitiesObjectArray
+              .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear() && new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
+            
           }
             
           
@@ -185,8 +230,24 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     console.log(selectedDate)
   }, []);
   //on Date change
+  const convertMinsToHrsMins = (mins) => {
+    const hours = Math.floor(mins / 60);
+    const remainingMinutes = mins % 60;
+
+    const hoursText = `${hours} hours`;
+    const minutesText = `${remainingMinutes} minutes`;
+
+    if (hours > 0 && remainingMinutes > 0) {
+        return `${hoursText} ${minutesText} `;
+    } else if (hours > 0) {
+        return hoursText;
+    } else {
+        return minutesText;
+    }
+  }
   const setDate = async(date) => {
     console.log(date)
+    console.log(date.formattedDate)
     setPickedTime()
     if(!date){
      setAvailability()
@@ -207,8 +268,15 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
             availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
               
+            if(selectedDate.formattedDate==new Date().toISOString().substring(0,10)){
+              console.log("correct log")
+              setAvailability(availabilitiesObjectArray
+                .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear() && new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
+            }else{
+        
             setAvailability(availabilitiesObjectArray
-              .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+              .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===selectedDate.year && new Date(obj.startMillisUtc).getMonth()===selectedDate.month && new Date(obj.startMillisUtc).getDate()===selectedDate.date))
+            }
           }else{
             let availabilitiesObjectArray=[]
       let durations= Object.keys(allAvailabilities)
@@ -217,8 +285,15 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         ObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
         availabilitiesObjectArray.push(...ObjectArray)
       }
+      if(selectedDate.formattedDate==new Date().toISOString().substring(0,10)){
+        console.log("correct log")
+        setAvailability(availabilitiesObjectArray
+          .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear() && new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
+      }else{
+  
       setAvailability(availabilitiesObjectArray
-        .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+        .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===selectedDate.year && new Date(obj.startMillisUtc).getMonth()===selectedDate.month && new Date(obj.startMillisUtc).getDate()===selectedDate.date))
+      }
           }
           
         }
@@ -233,13 +308,16 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         (serverlessResponse) => {
           if (serverlessResponse.status == 'SUCCESS') {
             setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
+            
             console.log(cDuration)
             if(cDuration){
               let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
               availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
                 
               setAvailability(availabilitiesObjectArray
-                .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+                .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
+                console.log(availabilitiesObjectArray
+                  .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
             }else{
               let availabilitiesObjectArray=[]
         let durations= Object.keys(allAvailabilities)
@@ -249,7 +327,9 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           availabilitiesObjectArray.push(...ObjectArray)
         }
         setAvailability(availabilitiesObjectArray
-          .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+          .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
+          console.log(availabilitiesObjectArray
+            .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
             }
           
           }
@@ -261,7 +341,9 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
         
       setAvailability(availabilitiesObjectArray
-        .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+        .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
+        console.log(availabilitiesObjectArray
+          .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
     }else{
       let availabilitiesObjectArray=[]
       let durations= Object.keys(allAvailabilities)
@@ -271,19 +353,32 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         availabilitiesObjectArray.push(...ObjectArray)
       }
       setAvailability(availabilitiesObjectArray
-        .filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==date.formattedDate))
+        .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
+       
+        console.log(availabilitiesObjectArray
+          .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===date.year && new Date(obj.startMillisUtc).getMonth()===date.month && new Date(obj.startMillisUtc).getDate()===date.date))
     }
   }
   };
   //on Duration Change
-  const changeDuration = (duration) => {
+  const changeDuration = (duration,e) => {
     setCDuration(duration)
+    console.log(e.target)
     let availabilitiesObjectArray = allAvailabilities[duration].availabilities
     availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
-    
+    console.log(availabilitiesObjectArray)
+    if(selectedDate.formattedDate==new Date().toISOString().substring(0,10)){
+      console.log("correct log")
+      setAvailability(availabilitiesObjectArray
+        .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear() && new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
+        console.log(availabilitiesObjectArray
+          .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear()&& new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
+      }else{
+
     setAvailability(availabilitiesObjectArray
-.filter(obj =>new Date(obj.startMillisUtc).toISOString().substring(0,10)==selectedDate.formattedDate))
-  };
+      .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===selectedDate.year && new Date(obj.startMillisUtc).getMonth()===selectedDate.month && new Date(obj.startMillisUtc).getDate()===selectedDate.date))
+    }
+    };
     const handleSelectedContact=(contactName)=>{
       console.log(selectContactOptions)
       let rightObject= selectContactOptions.find((element)=>element.value==contactName)
@@ -310,16 +405,32 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             if (serverlessResponse.response=="calendar not connected"){
               setHostIsValid(false)
               setHostValidationMessage('This User have not set up their calendar');
+              setAvailability()
+              setAllAvailability()
+              setDuration()
             }else{
               setHostIsValid(true)
               setHostValidationMessage('Validate User');
-            }
-            
-            setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
+              setBookingUserInfo({likelyAvailableUserIds:[response.allUsersBusyTimes[0].meetingsUser.id.toString()], slug:slug})
             let Durations = Object.keys(response.linkAvailability.linkAvailabilityByDuration)
             let DurationsObjectArray=Durations.map(obj => ( {value: obj, label: obj/60000} ))
+            setAllAvailability()
+            setAvailability()
             setAllAvailability(response.linkAvailability.linkAvailabilityByDuration)
             setDuration(DurationsObjectArray)
+            
+            if(selectedDate.formattedDate==new Date().toISOString().substring(0,10)){
+              console.log("correct log")
+              setAvailability(availabilitiesObjectArray
+                .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear() && new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
+            }else{
+        
+            setAvailability(availabilitiesObjectArray
+              .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===selectedDate.year && new Date(obj.startMillisUtc).getMonth()===selectedDate.month && new Date(obj.startMillisUtc).getDate()===selectedDate.date))
+            }
+            }
+            
+            
             // subject:"T1 meeting",
           //   duration: 900000,
           //   firstName: 'Yuan',
@@ -356,12 +467,71 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       return <LoadingSpinner label="Loading..." />
     }
   }
+  function formatAMPM(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    var strTime = hours + ':' + minutes + ' ' + ampm;
+    return strTime;
+  }
+  const renderDurationList=()=>{
+    if(Duration){
+      let Durationjsx =[]
+      if(cDuration){
+        for(let duration of Duration){
+          if(duration.value==cDuration){
+            Durationjsx.push(<Box flex={1} ><Button class="duration" variant="primary" onClick={(event)=>{changeDuration(duration.value,event)}}>{convertMinsToHrsMins(duration.label)}
+         </Button></Box>)
+          }else{
+            Durationjsx.push(<Box flex={1} ><Button class="duration" onClick={(event)=>{changeDuration(duration.value,event)}}>{convertMinsToHrsMins(duration.label)}
+         </Button></Box>)}
+        }
+        
+      }else{
+        Durationjsx=Duration.map(obj=><Box flex={1} > <Button class="duration" onClick={(event)=>{changeDuration(obj.value,event)}}>{convertMinsToHrsMins(obj.label)}
+         </Button></Box>)
+      }
+      
+      return Durationjsx
+      
+    }else{
+      return <LoadingSpinner label="Loading..." />
+    }
+  }
+  const renderAvailableTime=()=>{
+    if(availability){
+      // return availability.map(obj=> <Button onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
+      //    </Button>)
+         let avajsx =[]
+         if(pickedTime){
+           for(let ava of availability){
+             if(ava.value==pickedTime){
+              avajsx.push(<Box flex={1} alignSelf="stretch"><Button class="duration" variant="primary" onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
+            </Button></Box>)
+             }else{
+              avajsx.push(<Box flex={1} alignSelf="stretch"><Button class="duration" onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
+            </Button></Box>)}
+           }
+           
+         }else{
+          avajsx=availability.map(obj=> <Box flex={1} alignSelf="stretch"><Button class="duration" onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
+            </Button></Box>)
+         }
+         
+         return avajsx
+    }else{
+      return <LoadingSpinner label="Loading..." />
+    }
+  }
   const openMeetingLinkInterface = () => { 
     console.log(selectedHost)
     console.log(defaultSlug)
     if (selectedHost==context.user.firstName+" "+context.user.lastName){
       openIframe({
-        uri: `https://meetings.hubspot.com/${defaultSlug}?firstname=${selectedContact.firstname}&lastname=${selectedContact.lastname}&email=${selectedContact.email}&hs_activity_type=T1`, // this is a relative link. Some links will be blocked since they don't allow iframing
+        uri: `https://fbcmm2v3-test.azurewebsites.net/AppointmentsV2Page/rtse`, // this is a relative link. Some links will be blocked since they don't allow iframing
         height: 1000,
         width: 1000,
         title: 'Meeting Interface',
@@ -372,7 +542,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     }
     else{
       openIframe({
-        uri: `https://meetings.hubspot.com/${selectedHost.slug}?firstname=${selectedContact.firstname}&lastname=${selectedContact.lastname}&email=${selectedContact.email}&hs_activity_type=T1`, // this is a relative link. Some links will be blocked since they don't allow iframing
+        uri: `https://fbcmm2v3-test.azurewebsites.net/AppointmentsV2Page/rtse`, // this is a relative link. Some links will be blocked since they don't allow iframing
         height: 1000,
         width: 1000,
         title: 'Meeting Interface',
@@ -386,6 +556,9 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
  
   return (
     <>
+    {/* <Tabs defaultSelected="first">
+    <Tab tabId="first" title="First Tab"></Tab>
+    </Tabs> */}
       <Tile compact={true}>
         <Flex direction="column" gap="extra-small">
           <Heading>
@@ -544,6 +717,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           ></Select>
           <Select
           name="Appointment Sub Type"
+          label="Appointment Sub Type"
             options={appointmentSubType}
             variant="primary"
             buttonSize="md"
@@ -594,15 +768,21 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           </Button>
   
           
-        {/* <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
+        <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
         min={ {year: new Date ().getFullYear(), month: new Date ().getMonth(), date: new Date ().getDate()} }
          max={{year: new Date ().getFullYear()+1, month: new Date ().getMonth()+6, date: new Date ().getDate()} } 
           format="YYYY-MM-DD"/>
-        {/* {/* <Flex direction="row" align="end" gap="extra-small">
-          <NumberInput name="StartHour" label="StartHour" description="(24Hour Format 0=MidNight)" required="true" min={0} max={23} />
-          <NumberInput name="StartMinute" label="StartMinute" required="true" min={0} max={59}  />
-        </Flex> */}
-        {/* <Select
+          <Dropdown
+      options={TimeZoneOptions}
+      variant="transparent"
+      buttonSize="md"
+      buttonText={TimeZone}
+    />
+         <Flex direction="row" align="end" gap="extra-small">
+          {/* <NumberInput name="StartHour" label="StartHour" description="(24Hour Format 0=MidNight)" required="true" min={0} max={23} />
+          <NumberInput name="StartMinute" label="StartMinute" required="true" min={0} max={59}  /> */}
+        </Flex>
+         {/* <Select
          label="Duration"
           name="Duration"
           description="in Minutes"
@@ -614,7 +794,21 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select> */}
-          {/* <Select
+          <Divider />
+          <Text>Available Duration</Text>
+          {/* <List variant="inline-divided">
+            {
+              renderDurationList()
+            }
+      </List> */}
+      <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
+      {
+              renderDurationList()
+            }
+      </Flex>
+     
+      
+           {/* <Select
          label="Pick a Time"
           name="PickATime"
           value={pickedTime}
@@ -623,10 +817,16 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             variant="primary"
             buttonSize="md"
             buttonText="More"
-          ></Select>  */}
-          
-          {/* <Divider />
-          {SubmitButton()} */}
+          ></Select>   */}
+          <Divider />
+          <Text>Available Time</Text>
+          <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
+            {
+              renderAvailableTime()
+            }
+</Flex>
+           <Divider />
+          {SubmitButton()}
         </Form>
        
           {/* <Text ref={Ref}>write something here</Text> */}
