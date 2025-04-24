@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useRef  } from "react";
 
 import "./Appointment.css";
 import {
@@ -53,6 +53,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     refreshObjectProperties,
   } = actions;
   //console.log(context)
+  const inputRef = useRef();
   //const [properties, setProperties] = useState<Record<string, string>> ({});
   const [accountId, setAccountId] = useState(context.crm.objectId);
   const [selectedContact, setSelectedContact] = useState({});
@@ -63,6 +64,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
   const [appointmentSubType,setAppointmentSubType]=useState([{option:"subTypeTest",value:"subTypeTest"}]);
   const [selectedsubAppointmentType,setselectedsubAppointmentType]=useState();
   const [MeetingLoction,setMeetingLocation]=useState([]);
+  const [TaxYear,setTaxYear]=useState();
   
   const [PreferredMeetingLocation,setPreferredMeetingLocation]=useState([{option:"Virtual",value:"Virtual"},{option:"In Person",value:"In Person"},{option:"Phone Call",value:"Phone Call"},{option:"Custom",value:"Custom"}]);
   const [Hosts, setHosts] = useState([]);
@@ -248,7 +250,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     const minutesText = `${remainingMinutes} minutes`;
 
     if (hours > 0 && remainingMinutes > 0) {
-        return `${hoursText} ${minutesText} `;
+        return `${hours} h ${remainingMinutes} min `;
     } else if (hours > 0) {
         return hoursText;
     } else {
@@ -403,7 +405,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
    const handleSelectedHost =(Host)=>{
       let rightObject= Hosts.find((element)=>element.value==Host)
       setSelectedHost(rightObject)
-      //console.log(selectedHost)
+      console.log(rightObject)
+      if(rightObject.properties.hs_standard_time_zone){
+        setTimeZone(rightObject.properties.hs_standard_time_zone)
+      }else{
+        setTimeZone("This Host Doesn't a Time Zone Configured")
+      }
+      
         runServerless({ name: 'getUserInformation', parameters: { context:context , Host: rightObject} }).then(
         (serverlessResponse) => {
           if (serverlessResponse.status == 'SUCCESS') {
@@ -431,10 +439,13 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             
             if(selectedDate.formattedDate==new Date().toISOString().substring(0,10)){
               console.log("correct log")
+              let availabilitiesObjectArray = serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration[cDuration].availabilities
+              availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
               setAvailability(availabilitiesObjectArray
                 .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===new Date().getFullYear() && new Date(obj.startMillisUtc).getMonth()===new Date().getMonth() && new Date(obj.startMillisUtc).getDate()===new Date().getDate()))
             }else{
-        
+              let availabilitiesObjectArray = serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration[cDuration].availabilities
+              availabilitiesObjectArray.map(obj => ( obj.value= obj.startMillisUtc, obj.label= new Date(obj.startMillisUtc).toString()  ))
             setAvailability(availabilitiesObjectArray
               .filter(obj =>new Date(obj.startMillisUtc).getFullYear()===selectedDate.year && new Date(obj.startMillisUtc).getMonth()===selectedDate.month && new Date(obj.startMillisUtc).getDate()===selectedDate.date))
             }
@@ -493,22 +504,23 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
       if(cDuration){
         for(let duration of Duration){
           if(duration.value==cDuration){
-            Durationjsx.push(<Box flex={1} ><Button class="duration" variant="primary" onClick={(event)=>{changeDuration(duration.value,event)}}>{convertMinsToHrsMins(duration.label)}
-         </Button></Box>)
+            Durationjsx.push(<TableCell width="min"><Box flex={1} ><Button class="duration" variant="primary" onClick={(event)=>{changeDuration(duration.value,event)}}>{convertMinsToHrsMins(duration.label)}
+         </Button></Box></TableCell>)
           }else{
-            Durationjsx.push(<Box flex={1} ><Button class="duration" onClick={(event)=>{changeDuration(duration.value,event)}}>{convertMinsToHrsMins(duration.label)}
-         </Button></Box>)}
+            Durationjsx.push(<TableCell width="min"><Box flex={1} ><Button class="duration" onClick={(event)=>{changeDuration(duration.value,event)}}>{convertMinsToHrsMins(duration.label)}
+         </Button></Box></TableCell>)}
         }
         
       }else{
-        Durationjsx=Duration.map(obj=><Box flex={1} > <Button class="duration" onClick={(event)=>{changeDuration(obj.value,event)}}>{convertMinsToHrsMins(obj.label)}
-         </Button></Box>)
+        Durationjsx=Duration.map(obj=><TableCell width="min"><Box flex={1} > <Button class="duration" onClick={(event)=>{changeDuration(obj.value,event)}}>{convertMinsToHrsMins(obj.label)}
+         </Button></Box></TableCell>)
       }
-      
-      return Durationjsx
+      let RowInsert=createRows(Durationjsx,4)
+         RowInsert.map(array=> array.splice(0, 0, <TableRow></TableRow>))
+      return RowInsert
       
     }else{
-      return <LoadingSpinner label="Loading..." />
+      return 
     }
   }
   const renderLocation=()=>{
@@ -519,42 +531,42 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         console.log(selectedContact)
         
         return <Tile>
-          <TextArea label="Meeting Title"
-        name="Meeting Title" value={Meetingtitle}></TextArea>
+          <Input label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></Input>
          
         <TextArea label="Meeting Desciption"
-        name="MeetingDesciption"value=""></TextArea>
+        name="MeetingDesciption"placeholder="Message for our Member to see" value=""></TextArea>
         </Tile>
       }
       else if(MeetingLoction=="In Person") {
         return<Tile>
-        <TextArea label="Meeting Title"
-      name="Meeting Title" value={Meetingtitle}></TextArea>
+       <Input label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></Input>
       <TextArea label="Meeting Desciption"
-      name="MeetingDesciption"value=""></TextArea>
+      name="MeetingDesciption"value="" placeholder="Message for our Member to see"></TextArea>
       <TextArea label="Meeting Address"
-      name="MeetingAddress"value={selectedContact.address}></TextArea>
+      name="MeetingAddress"value={selectedContact.address} placeholder="Message for our Member to see"></TextArea>
       </Tile>
       }
       else if(MeetingLoction=="Phone Call"){
         return<Tile>
-        <TextArea label="Meeting Title"
-      name="Meeting Title" value={Meetingtitle}></TextArea>
-       <TextArea label="Meeting Type"
-      name="MeetingType"value="Phone Call"></TextArea>
+        <Input label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></Input>
+       <Input label="Meeting Type"
+      name="MeetingType"value="Phone Call"></Input>
       <TextArea label="Meeting Desciption"
-      name="MeetingDesciption"value=""></TextArea>
+      name="MeetingDesciption"value="" placeholder="Message for our Member to see"></TextArea>
       <TextArea label="Phone Number"
       name="PhoneNumber"value={selectedContact.phone}></TextArea>
       </Tile>
       }
       else if(MeetingLoction=="Custom"){
         return<Tile>
-        <TextArea label="Meeting Title"
-      name="Meeting Title" value={Meetingtitle}></TextArea>
+        <Input label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></Input>
        
       <TextArea label="Meeting Desciption"
-      name="MeetingDesciption"value=""></TextArea>
+      name="MeetingDesciption"value="" placeholder="Message for our Member to see"></TextArea>
       </Tile>
       }
     }
@@ -566,6 +578,8 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
     }
     return result;
   }
+  
+
   
 
   const renderAvailableTime=()=>{
@@ -591,7 +605,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
          RowInsert.map(array=> array.splice(0, 0, <TableRow></TableRow>))
          return RowInsert
     }else{
-      return <LoadingSpinner label="Loading..." />
+      return 
     }
   }
   const openMeetingLinkInterface = () => { 
@@ -651,7 +665,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
 
       <Tile compact={true}>
         <Text format={{ fontWeight: 'bold' }}>Appointment Information</Text>
-        <Text format={{ fontWeight: 'demibold' }}>Appointment Type</Text>
+       
         <Form onSubmit={async (e) => {
           // 2d array index 0 is the property name and index 1 is the value 
           //[[propertyname, value],[...]]
@@ -703,7 +717,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
                     
                       console.log("wait is over searching for the meeting activity");
                       //
-                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue,context.crm,BookMeetingResponse]}).then(
+                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue,context.crm,BookMeetingResponse,{Duration:cDuration,PickedTime:pickedTime,TimeZone:TimeZone}]}).then(
                        async (serverlessResponse) => {
                           if (serverlessResponse.status == 'SUCCESS') {
                            console.log(serverlessResponse)
@@ -776,14 +790,19 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
         }
         }}
       }}>
+        <Flex direction={'row'}gap={'extra-large'}alignSelf={'start'}>
+        <Box flex={1} alignSelf="end">
         <Select
           name="AppointmentType"
+          label="Appointment Type"
             options={appointmentType}
             onChange={(e)=>setselectedAppointmentType(e)}
             variant="primary"
             buttonSize="md"
             buttonText="More"
           ></Select>
+          </Box>
+          <Box flex={1} alignSelf="end">
           <Select
           name="Appointment Sub Type"
           label="Appointment Sub Type"
@@ -793,27 +812,37 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
+          </Box>
+          </Flex>
+          <Flex direction={'row'}gap={'extra-large'}alignSelf={'start'}>
+          <Box flex={1} alignSelf="end">
           <Input label="Tax Year"
           name="TaxTerm"
+          value={TaxYear}
           error={!yearIsValid}
+          ref={inputRef}
         validationMessage={yearValidationMessage}
-          onInput={(value) => {
+          onChange={(value) => {
             let currentYear = new Date().getFullYear().toString()
             let UpperLimit = new Number(currentYear)+1
               let first = currentYear.substring(2, 3);
               console.log(first)
             let second = new Number(currentYear.substring(3, 4))+1;
-            if (value.search(new RegExp(`^(201[5-9]|20[${first}][0-${second}])$`))<0) {
+            if (new String(value).search(new RegExp(`^(201[5-9]|20[${first}][0-${second}])$`))<0) {
               setYearValidationMessage('Please Enter a Number between 2015 to '+UpperLimit);
               setYearIsValid(false);
+              setTaxYear(value)
             }else{
               setYearValidationMessage('Valid Year');
               setYearIsValid(true);
+              setTaxYear(value)
             }
           }}
+          
           ></Input>
-          <Select
-         label="Host"
+          </Box>
+          <Box flex={1} alignSelf="end">
+          <Select label="Host"
           name="Host"
             options={Hosts}
             onChange={(e)=>handleSelectedHost(e)}
@@ -824,6 +853,19 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
             buttonSize="md"
             buttonText="More"
           ></Select>
+          </Box>
+          </Flex>
+                  <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
+        min={ {year: new Date ().getFullYear(), month: new Date ().getMonth(), date: new Date ().getDate()} }
+         max={{year: new Date ().getFullYear()+1, month: new Date ().getMonth()+6, date: new Date ().getDate()} } 
+          format="YYYY-MM-DD"/>
+          <Dropdown
+      options={TimeZoneOptions}
+      variant="transparent"
+      buttonSize="md"
+      buttonText={TimeZone}
+    />
+    
           <Select
          label="Preferred Meeting Location?"
           name="PreferredMeetingLocation"
@@ -845,16 +887,7 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           </Button> */}
   
           
-        <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
-        min={ {year: new Date ().getFullYear(), month: new Date ().getMonth(), date: new Date ().getDate()} }
-         max={{year: new Date ().getFullYear()+1, month: new Date ().getMonth()+6, date: new Date ().getDate()} } 
-          format="YYYY-MM-DD"/>
-          <Dropdown
-      options={TimeZoneOptions}
-      variant="transparent"
-      buttonSize="md"
-      buttonText={TimeZone}
-    />
+
          <Flex direction="row" align="end" gap="extra-small">
           {/* <NumberInput name="StartHour" label="StartHour" description="(24Hour Format 0=MidNight)" required="true" min={0} max={23} />
           <NumberInput name="StartMinute" label="StartMinute" required="true" min={0} max={59}  /> */}
@@ -873,11 +906,18 @@ const Extension = ({ context, runServerless, sendAlert, actions,openIframe}) => 
           ></Select> */}
           <Divider />
           <Text>Available Duration</Text>
-          <List variant="inline-divided">
+          <Table bordered={false} paginated={false} >
+        <TableHead>
+        
+        <TableBody>
+        
             {
-              renderDurationList()
+               renderDurationList()
             }
-      </List>
+      
+        </TableBody>
+      </TableHead>
+      </Table>
       {/* <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
       {
               renderDurationList()

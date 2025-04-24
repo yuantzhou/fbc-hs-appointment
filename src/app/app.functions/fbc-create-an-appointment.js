@@ -10,14 +10,11 @@ exports.main = async (context = {}) => {
     accessToken: process.env['PRIVATE_APP_ACCESS_TOKEN']
 });
 
- //[0] for contact information [1] for form information [2] context.crm [3] for booking information calendarEvent ID ${context.parameters[2]}
-  const passInDate=  context.parameters[1].StartDate
- const Hour= new Date(new Number(context.parameters[1].PickATime)).getHours()
- const min= new Date(new Number(context.parameters[1].PickATime)).getMinutes()
- const duration = context.parameters[1].Duration
- const endTime= new Date (`${passInDate} ${Hour}:${min}:25 GMT-0700 (Mountain Standard Time)`).getTime()+new Number(duration)
+ //[0] for contact information [1] for form information [2] context.crm [3] for booking information calendarEvent ID ${context.parameters[2]}, [4] Time Object
+  let StartTime= context.parameters[4].PickedTime
+ const duration = context.parameters[4].Duration*1  
+ const endTime= new Date (StartTime).getTime()+new Number(duration)
  console.log(duration)
- console.log(new Date (`${passInDate} ${Hour}:${min}:25 GMT-0700 (Mountain Standard Time)`).getTime())
  console.log(new Date (endTime).toISOString())
 // console.log(duration)
 // let endHour = Number(Math.floor(duration))+Number(Hour)
@@ -32,19 +29,52 @@ exports.main = async (context = {}) => {
 //     durationMinutes=durationMinutes-60
 //   }
 // }
- let deadline = new Date(passInDate).setDate(new Date(passInDate).getDate() + 3)
+ let deadline = new Date(StartTime).getDate() + 3
   const properties = {
     //[0] for contact information [1] for form information 
-    "appointment_name": `${context.parameters[1].AppointmentType} Appointment with ${context.parameters[0].firstname} ${context.parameters[0].lastname}`,
-    "appointment_start": `${new Date (`${passInDate} ${Hour}:${min}:25 GMT-0700 (Mountain Standard Time)`).toISOString()}`,
+    "appointment_name": `${context.parameters[1]["Meeting Title"]}`,
+    "appointment_start": `${new Date (StartTime).toISOString()}`,
      "appointment_end":`${new Date (endTime).toISOString()}`,
     "appointment_duration": duration/60000,
     "appointment_type": context.parameters[1].AppointmentType,
     "appointment_deadline": deadline,
+    "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
     "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
     "fbc_tax_term": context.parameters[1].TaxTerm,
     "calendar_event_id": context.parameters[3].response.calendarEventId
   };
+  if(context.parameters[1]["PhoneNumber"]){
+    properties={
+      //[0] for contact information [1] for form information 
+      "appointment_name": `${context.parameters[1]["Meeting Title"]}`,
+      "appointment_start": `${new Date (StartTime).toISOString()}`,
+       "appointment_end":`${new Date (endTime).toISOString()}`,
+      "appointment_duration": duration/60000,
+      "appointment_type": context.parameters[1].AppointmentType,
+      "appointment_deadline": deadline,
+      "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
+      "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
+      "fbc_tax_term": context.parameters[1].TaxTerm,
+      "calendar_event_id": context.parameters[3].response.calendarEventId,
+      "contact_phone_number":`${context.parameters[1]["PhoneNumber"]}`
+    }
+  }
+  if(context.parameters[1]["MeetingAddress"]){
+    properties={
+      //[0] for contact information [1] for form information 
+      "appointment_name": `${context.parameters[1]["Meeting Title"]}`,
+      "appointment_start": `${new Date (StartTime).toISOString()}`,
+       "appointment_end":`${new Date (endTime).toISOString()}`,
+      "appointment_duration": duration/60000,
+      "appointment_type": context.parameters[1].AppointmentType,
+      "appointment_deadline": deadline,
+      "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
+      "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
+      "fbc_tax_term": context.parameters[1].TaxTerm,
+      "calendar_event_id": context.parameters[3].response.calendarEventId,
+      "contacts_address":context.parameters[1]["MeetingAddress"]
+    }
+  }
 //  //514 is ad hoc association to the account 
   const SimplePublicObjectInputForCreate = { associations: [{"types":[{"associationCategory":"USER_DEFINED","associationTypeId":508},{"associationCategory":"USER_DEFINED","associationTypeId":514}],"to":{"id":"19997413735"}}], objectWriteTraceId: "string", properties };
 //fbc appointment object id 
