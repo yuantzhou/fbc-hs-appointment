@@ -19,8 +19,13 @@ import {
   Divider,
   List,
   ButtonRow,
-  Box
-
+  Box, 
+  TextArea,Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
 } from "@hubspot/ui-extensions";
 import { CrmActionButton } from '@hubspot/ui-extensions/crm';
 import { setDefaultLocale } from "react-datepicker";
@@ -54,9 +59,10 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [appointmentTypeOptions, setAppointmentTypeOptions] = useState([]);
   const [appointmentSubTypeOptions, setAppointmentSubTypeOptions] = useState([]);
   const [appointmentSubTypeFilteredOptions, setAppointmentSubTypeFilteredOptions] = useState([]);
-  const [appointmentType, setAppointmentType] = useState();
-  const [appointmentSubType, setAppointmentSubType] = useState();
-  const [PreferredMeetingLocation, setPreferredMeetingLocation] = useState([{ option: "Virtual", value: "Virtual" }, { option: "In Person", value: "In Person" }, { option: "Phone Call", value: "Phone Call" }, { option: "Custom", value: "Custom" }]);
+  const [selectedAppointmentType, setSelectedAppointmentType] = useState();
+  const [selectedSubAppointmentType,setSelectedSubAppointmentType]=useState();
+  const [MeetingLoction,setMeetingLocation]=useState([]);
+  const [PreferredMeetingLocation,setPreferredMeetingLocation]=useState([{option:"Virtual",value:"Virtual"},{option:"In Person",value:"In Person"},{option:"Phone Call",value:"Phone Call"},{option:"Custom",value:"Custom"}]);
   const [Hosts, setHosts] = useState([]);
   const [selectedDate, setSelectedDate] = useState({ formattedDate: new Date().toISOString().substring(0, 10) });
   const [selectedHost, setSelectedHost] = useState(context.user.firstName + " " + context.user.lastName);
@@ -449,7 +455,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const handleAvailability = (TimeOption) => {
 
     setPickedTime(TimeOption)
-    console.log(pickedTime)
+    console.log(TimeOption)
     // let test =availability.find((obj) => obj.value==TimeOption )
     // console.log(test)
     // if(availability.find((obj) => obj.value!=TimeOption )){
@@ -501,29 +507,87 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
       return <LoadingSpinner label="Loading..." />
     }
   }
-  const renderAvailableTime = () => {
-    if (availability) {
+
+  const renderLocation=()=>{
+    let Meetingtitle= `${selectedAppointmentType}-${selectedsubAppointmentType} with ${selectedContact.firstname} ${selectedContact.lastname}`
+        
+    if(MeetingLoction){
+      if(MeetingLoction=="Virtual"){
+        console.log(selectedContact)
+        
+        return <Tile>
+          <TextArea label="Meeting Title"
+        name="Meeting Title" value={Meetingtitle}></TextArea>
+         
+        <TextArea label="Meeting Desciption"
+        name="MeetingDesciption"value=""></TextArea>
+        </Tile>
+      }
+      else if(MeetingLoction=="In Person") {
+        return<Tile>
+        <TextArea label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></TextArea>
+      <TextArea label="Meeting Desciption"
+      name="MeetingDesciption"value=""></TextArea>
+      <TextArea label="Meeting Address"
+      name="MeetingAddress"value={selectedContact.address}></TextArea>
+      </Tile>
+      }
+      else if(MeetingLoction=="Phone Call"){
+        return<Tile>
+        <TextArea label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></TextArea>
+       <TextArea label="Meeting Type"
+      name="MeetingType"value="Phone Call"></TextArea>
+      <TextArea label="Meeting Desciption"
+      name="MeetingDesciption"value=""></TextArea>
+      <TextArea label="Phone Number"
+      name="PhoneNumber"value={selectedContact.phone}></TextArea>
+      </Tile>
+      }
+      else if(MeetingLoction=="Custom"){
+        return<Tile>
+        <TextArea label="Meeting Title"
+      name="Meeting Title" value={Meetingtitle}></TextArea>
+       
+      <TextArea label="Meeting Desciption"
+      name="MeetingDesciption"value=""></TextArea>
+      </Tile>
+      }
+    }
+  }
+  function createRows(array, elementsPerRow) {
+    const result = [];
+    for (let i = 0; i < array.length; i += elementsPerRow) {
+      result.push(array.slice(i, i + elementsPerRow));
+    }
+    return result;
+  }
+  
+
+  const renderAvailableTime=()=>{
+    if(availability){
       // return availability.map(obj=> <Button onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
       //    </Button>)
-      let avajsx = []
-      if (pickedTime) {
-        for (let ava of availability) {
-          if (ava.value == pickedTime) {
-            avajsx.push(<Box flex={1} alignSelf="stretch"><Button class="duration" variant="primary" onClick={() => { handleAvailability(ava.value) }}>{formatAMPM(new Date(ava.label))}
-            </Button></Box>)
-          } else {
-            avajsx.push(<Box flex={1} alignSelf="stretch"><Button class="duration" onClick={() => { handleAvailability(ava.value) }}>{formatAMPM(new Date(ava.label))}
-            </Button></Box>)
-          }
-        }
-
-      } else {
-        avajsx = availability.map(obj => <Box flex={1} alignSelf="stretch"><Button class="duration" onClick={() => { handleAvailability(obj.value) }}>{formatAMPM(new Date(obj.label))}
-        </Button></Box>)
-      }
-
-      return avajsx
-    } else {
+         let avajsx =[]
+         if(pickedTime){
+           for(let ava of availability){
+             if(ava.value==pickedTime){
+              avajsx.push(<TableCell><Box flex={1} alignSelf="stretch"><Button class="duration" variant="primary" onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
+            </Button></Box></TableCell>)
+             }else{
+              avajsx.push(<TableCell><Box flex={1} alignSelf="stretch"><Button class="duration" variant="transparent"onClick={()=>{handleAvailability(ava.value)}}>{formatAMPM(new Date(ava.label))}
+            </Button></Box></TableCell>)}
+           }
+           
+         }else{
+          avajsx=availability.map(obj=><TableCell> <Box flex={1} alignSelf="stretch"><Button class="duration"   variant="transparent"onClick={()=>{handleAvailability(obj.value)}}>{formatAMPM(new Date(obj.label))}
+            </Button></Box></TableCell>)
+         }
+         let RowInsert=createRows(avajsx,5)
+         RowInsert.map(array=> array.splice(0, 0, <TableRow></TableRow>))
+         return RowInsert
+    }else{
       return <LoadingSpinner label="Loading..." />
     }
   }
@@ -595,78 +659,54 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           if (!selectedContact.contactId) {
             actions.addAlert({ title: "Error Message", message: "Pick a Contact", type: "danger" })
             setWorking(!working)
-          } else {
-            console.log("there is a contact")
-            if (arrayOfObjectsValues.includes('') || yearIsValid == false) {
-              // get addAlert from action package
-              actions.addAlert({ title: "Error Message", message: "Fill out the Form Information", type: "danger" })
-              setWorking(!working)
-            } else {
-              console.log(arrayOfObjectsValues)
-              console.log(availability)
-              let checkDup = await runServerless({ name: 'checkDuplicate', parameters: [selectedContact, e.targetValue] })
-              console.log(checkDup)
-              if (!checkDup.response) {
-                actions.addAlert({ title: "Error Message", message: "There is an Appointment already existing", type: "danger" })
-                setWorking(!working)
-              }
-              else {
-
-                // check if the availability is valid       
-                if (availability.find((obj) => obj.value == arrayOfObjectsValues[5])) {
-
-                  console.log("valid entry")
-                  console.log(Hosts[0])
-                  console.log(bookingUserInfo)
-                  console.log(selectedHost)
-                  // default case
-                  if (Hosts.find(obj => obj.label == selectedHost)) {
-                    // console.log({likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
-                    //   legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
-                    //   duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
-                    //   firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug  })
-                    let bookingInfo = {
-                      likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
-                      legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
-                      duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost).properties.hs_standard_time_zone,
-                      firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug
-                    }
-                    await runServerless({ name: 'bookMeeting', parameters: { bookingInfo: bookingInfo } }).then(
-                      async (BookMeetingResponse) => {
-
-                        //run create an appointment and create associations
-
-                        console.log("wait is over searching for the meeting activity");
-                        //
-                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context.crm, BookMeetingResponse] }).then(
-                          async (serverlessResponse) => {
-                            if (serverlessResponse.status == 'SUCCESS') {
-                              console.log(serverlessResponse)
-                              console.log(selectedContact)
-                              setWorking(!working)
-                              await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id, context.crm, selectedContact, BookMeetingResponse.response.calendarEventId] }).then(
-                                (serverlessResponse) => {
-                                  if (serverlessResponse.status == 'SUCCESS') {
-                                    console.log(Object.keys(serverlessResponse))
-                                    console.log(serverlessResponse.response)
-                                    setWorking(!working)
-                                    actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
-                                  }
-                                }
-
-                              );
-
-                            }
-                          }
-                        );
-                      })
-                    // selected Host case
-                  } else {
-                    console.log({
-                      likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
-                      legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
-                      duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost.label).properties.hs_standard_time_zone,
-                      firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug
+          }
+          else{
+           
+          // check if the availability is valid       
+          if(availability.find((obj) => obj.value==pickedTime)){
+            
+            console.log("valid entry")
+            console.log(Hosts[0])
+            console.log(bookingUserInfo)
+            console.log(selectedHost)
+            // default case
+            if(Hosts.find(obj =>obj.label==selectedHost)){
+              // console.log({likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
+              //   legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
+              //   duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
+              //   firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug  })
+                let bookingInfo={likelyAvailableUserIds:bookingUserInfo.likelyAvailableUserIds,
+                  legalConsentResponses: [{communicationTypeId: '302269988', consented: true}],
+                  duration:cDuration, startTime: pickedTime, timezone:Hosts.find(obj=>obj.label==selectedHost).properties.hs_standard_time_zone, 
+                  firstName:selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email,slug: bookingUserInfo.slug }
+                await runServerless({ name: 'bookMeeting', parameters: {bookingInfo:bookingInfo } }).then(
+                  async (BookMeetingResponse) => {     
+                 
+                    //run create an appointment and create associations
+                    
+                      console.log("wait is over searching for the meeting activity");
+                      //
+                      await runServerless({ name: 'createAppointment', parameters: [selectedContact,e.targetValue,context.crm,BookMeetingResponse]}).then(
+                       async (serverlessResponse) => {
+                          if (serverlessResponse.status == 'SUCCESS') {
+                           console.log(serverlessResponse)
+                           console.log(selectedContact)
+                           setWorking(!working)
+                           await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id,context.crm,selectedContact,BookMeetingResponse.response.calendarEventId]}).then(
+                             (serverlessResponse) => {
+                               if (serverlessResponse.status == 'SUCCESS') {
+                                 console.log(Object.keys(serverlessResponse))
+                                 console.log(serverlessResponse.response)
+                                 setWorking(!working)
+                                 actions.addAlert({title: "Success!", message: "Appointment Has Been Created!", type: "success"})
+                                 }
+                             }
+                             
+                           );
+                           
+                           }
+                       }
+                     ); 
                     })
                     let bookingInfo = {
                       likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
@@ -719,6 +759,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           <Select
             name="AppointmentType"
             options={appointmentType}
+            onChange={(e)=>setselectedAppointmentType(e)}
             variant="primary"
             buttonSize="md"
             buttonText="More"
@@ -735,6 +776,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             name="AppointmentSubType"
             label="Appointment Sub Type"
             options={appointmentSubType}
+            onChange={(e)=>setselectedsubAppointmentType(e)}
             variant="primary"
             buttonSize="md"
             buttonText="More"
@@ -777,20 +819,27 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             label="Preferred Meeting Location?"
             name="PreferredMeetingLocation"
             options={PreferredMeetingLocation}
+            onChange={(value) => {
+              setMeetingLocation(value);
+              }}
             variant="primary"
             buttonSize="md"
             buttonText="More"
           ></Select>
-          <Divider />
-          <Button onClick={openMeetingLinkInterface}>
+            {
+              renderLocation()
+            }
+          
+            <Divider />
+          {/* <Button onClick={openMeetingLinkInterface}>
             MeetingTimeInterface
-          </Button>
-
-
-          <DateInput name="StartDate" label="Date" required="true" onChange={(e) => setDate(e)} defaultValue={defaultDate}
-            min={{ year: new Date().getFullYear(), month: new Date().getMonth(), date: new Date().getDate() }}
-            max={{ year: new Date().getFullYear() + 1, month: new Date().getMonth() + 6, date: new Date().getDate() }}
-            format="YYYY-MM-DD" />
+          </Button> */}
+  
+          
+        <DateInput name="StartDate" label="Date"  required="true"onChange={(e)=>setDate(e)} defaultValue={defaultDate} 
+        min={ {year: new Date ().getFullYear(), month: new Date ().getMonth(), date: new Date ().getDate()} }
+         max={{year: new Date ().getFullYear()+1, month: new Date ().getMonth()+6, date: new Date ().getDate()} } 
+          format="YYYY-MM-DD"/>
           <Dropdown
             options={TimeZoneOptions}
             variant="transparent"
@@ -815,19 +864,20 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           ></Select> */}
           <Divider />
           <Text>Available Duration</Text>
-          {/* <List variant="inline-divided">
+          <List variant="inline-divided">
             {
               renderDurationList()
             }
-      </List> */}
-          <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
-            {
+
+      </List>
+      {/* <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
+      {
               renderDurationList()
             }
-          </Flex>
-
-
-          {/* <Select
+      </Flex> */}
+      
+      
+           {/* <Select
          label="Pick a Time"
           name="PickATime"
           value={pickedTime}
@@ -839,12 +889,26 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           ></Select>   */}
           <Divider />
           <Text>Available Time</Text>
-          <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
+          
+      <Table bordered={false} paginated={false} >
+      <TableHead>
+        
+        <TableBody>
+        
+            {
+               renderAvailableTime()
+            }
+      
+        </TableBody>
+      </TableHead>
+      </Table>
+          {/* <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
             {
               renderAvailableTime()
             }
-          </Flex>
-          <Divider />
+
+</Flex> */}
+           <Divider />
           {SubmitButton()}
         </Form>
 
