@@ -1,6 +1,8 @@
 {
   "dependencies": {
+    "@hubspot/ui-extensions": "^0.8.53",
     "dotenv": "^16.4.5",
-    "json-query": "^2.2.2"
+    "json-query": "^2.2.2",
+    "react-datepicker": "^8.3.0"
   }
 }

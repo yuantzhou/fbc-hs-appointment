@@ -51,9 +51,11 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [selectedContact, setSelectedContact] = useState({});
   const [primaryContact, setPrimaryContact] = useState({});
   const [selectContactOptions, setSelectContactOptions] = useState([]);
-  const [appointmentType, setAppointmentType] = useState([]);
-  const [appointmentSubType, setAppointmentSubType] = useState([]);
-  const [appointmentSubTypeFiltered, setAppointmentSubTypeFiltered] = useState([]);
+  const [appointmentTypeOptions, setAppointmentTypeOptions] = useState([]);
+  const [appointmentSubTypeOptions, setAppointmentSubTypeOptions] = useState([]);
+  const [appointmentSubTypeFilteredOptions, setAppointmentSubTypeFilteredOptions] = useState([]);
+  const [appointmentType, setAppointmentType] = useState();
+  const [appointmentSubType, setAppointmentSubType] = useState();
   const [PreferredMeetingLocation, setPreferredMeetingLocation] = useState([{ option: "Virtual", value: "Virtual" }, { option: "In Person", value: "In Person" }, { option: "Phone Call", value: "Phone Call" }, { option: "Custom", value: "Custom" }]);
   const [Hosts, setHosts] = useState([]);
   const [selectedDate, setSelectedDate] = useState({ formattedDate: new Date().toISOString().substring(0, 10) });
@@ -152,17 +154,15 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     runServerless({ name: 'getHubDB' }).then(
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
-          console.log(serverlessResponse.response)
-          let meetingTypeTable = serverlessResponse.response.results.find(obj => obj.name.includes("meeting_types"))
-          let meetingTypeOptions = meetingTypeTable.columns.find(obj => obj.name.includes("meeting_type_code")).options
-          meetingTypeOptions.map(obj => (obj.label = obj.name, obj.value = obj.name))
-          console.log(meetingTypeOptions)
-          setAppointmentType(meetingTypeOptions)
+          let meetingTypeTable = serverlessResponse.response.results.find(obj => obj.name.includes("meeting_types"));
+          let meetingTypeOptions = meetingTypeTable.columns.find(obj => obj.name.includes("meeting_type_code")).options;
+          meetingTypeOptions.map(obj => (obj.label = obj.name, obj.value = obj.name));
+          setAppointmentTypeOptions(meetingTypeOptions);
 
-          let meetingSubTypeTable = serverlessResponse.response.results.find(obj => obj.name.includes("meeting_sub_types"))
-          let meetingSubTypeOptions = meetingSubTypeTable.columns.find(obj => obj.name.includes("meeting_type_code")).options
-          meetingSubTypeOptions.map(obj => (obj.label = obj.name, obj.value = obj.name))
-          setAppointmentSubType(meetingSubTypeOptions)
+          let meetingSubTypeTable = serverlessResponse.response.results.find(obj => obj.name.includes("meeting_sub_types"));
+          let meetingSubTypeOptions = meetingSubTypeTable.columns.find(obj => obj.name.includes("meeting_type_code")).options;
+          meetingSubTypeOptions.map(obj => (obj.label = obj.name, obj.value = obj.name));
+          setAppointmentSubTypeOptions(meetingSubTypeOptions);
         }
       }
     );
@@ -722,14 +722,25 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             variant="primary"
             buttonSize="md"
             buttonText="More"
+            onChange={(value) => {
+              setAppointmentType(value);
+              if (!value) {
+                setAppointmentSubTypeFilteredOptions([]);
+              } else {
+                setAppointmentSubTypeFilteredOptions(meetingSubTypeOptions.filter(obj => obj.value == value));
+              }
+            }}
           ></Select>
           <Select
-            name="Appointment Sub Type"
+            name="AppointmentSubType"
             label="Appointment Sub Type"
             options={appointmentSubType}
             variant="primary"
             buttonSize="md"
             buttonText="More"
+            onChange={(value) => {
+              setAppointmentSubType(value);
+            }}
           ></Select>
           <Input label="Tax Year"
             name="TaxTerm"
