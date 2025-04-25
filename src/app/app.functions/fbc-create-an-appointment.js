@@ -29,17 +29,18 @@ exports.main = async (context = {}) => {
 //     durationMinutes=durationMinutes-60
 //   }
 // }
- let deadline = new Date(StartTime).getDate() + 3
-  const properties = {
+ let deadline = new Date(StartTime).setDate( new Date(StartTime).getDate() + 3)
+ console.log(deadline)
+  let properties = {
     //[0] for contact information [1] for form information 
     "appointment_name": `${context.parameters[1]["Meeting Title"]}`,
     "appointment_start": `${new Date (StartTime).toISOString()}`,
      "appointment_end":`${new Date (endTime).toISOString()}`,
     "appointment_duration": duration/60000,
-    "appointment_type": context.parameters[1].AppointmentType,
-    "appointment_deadline": deadline,
+    "appointment_type_free_text": context.parameters[1].AppointmentType,
+    "appointment_deadline_date_time": new Date(deadline).toISOString(),
     "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
-    "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
+    "meeting_location": context.parameters[1].PreferredMeetingLocation,
     "fbc_tax_term": context.parameters[1].TaxTerm,
     "calendar_event_id": context.parameters[3].response.calendarEventId
   };
@@ -50,10 +51,10 @@ exports.main = async (context = {}) => {
       "appointment_start": `${new Date (StartTime).toISOString()}`,
        "appointment_end":`${new Date (endTime).toISOString()}`,
       "appointment_duration": duration/60000,
-      "appointment_type": context.parameters[1].AppointmentType,
-      "appointment_deadline": deadline,
+      "appointment_type_free_text": context.parameters[1].AppointmentType,
+      "appointment_deadline_date_time": new Date(deadline).toISOString(),
       "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
-      "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
+      "meeting_location": context.parameters[1].PreferredMeetingLocation,
       "fbc_tax_term": context.parameters[1].TaxTerm,
       "calendar_event_id": context.parameters[3].response.calendarEventId,
       "contact_phone_number":`${context.parameters[1]["PhoneNumber"]}`
@@ -66,10 +67,10 @@ exports.main = async (context = {}) => {
       "appointment_start": `${new Date (StartTime).toISOString()}`,
        "appointment_end":`${new Date (endTime).toISOString()}`,
       "appointment_duration": duration/60000,
-      "appointment_type": context.parameters[1].AppointmentType,
-      "appointment_deadline": deadline,
+      "appointment_type_free_text": context.parameters[1].AppointmentType,
+      "appointment_deadline_date_time": new Date(deadline).toISOString(),
       "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
-      "preferred_meeting_location": context.parameters[1].PreferredMeetingLocation,
+      "meeting_location": context.parameters[1].PreferredMeetingLocation,
       "fbc_tax_term": context.parameters[1].TaxTerm,
       "calendar_event_id": context.parameters[3].response.calendarEventId,
       "contacts_address":context.parameters[1]["MeetingAddress"]
