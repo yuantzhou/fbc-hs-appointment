@@ -279,8 +279,9 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     }
   }
   const setDate = async (date) => {
+    if(date){
     console.log(date)
-    console.log(date.formattedDate)
+    
     console.log("check if cDuration" +cDuration)
     setPickedTime()
     if (!date) {
@@ -395,6 +396,8 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         console.log(availabilitiesObjectArray
           .filter(obj => new Date(obj.startMillisUtc).getFullYear() === date.year && new Date(obj.startMillisUtc).getMonth() === date.month && new Date(obj.startMillisUtc).getDate() === date.date))
       }
+    }}else{
+      console.log("no date selected!")
     }
   };
   //on Duration Change
@@ -706,16 +709,12 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         <Form onSubmit={async (e) => {
           // 2d array index 0 is the property name and index 1 is the value 
           //[[propertyname, value],[...]]
-          if(MeetingLoction=="In Person"){
-            console.log(PhoneNumber)
-            console.log(MeetingAddress)
-            setPhoneNumber("")
-          }
-          if(MeetingLoction=="Phone Call"){
-            console.log(PhoneNumber)
-            console.log(MeetingAddress)
-            setMeetingAddress("")
-          }
+          setMeetingLocation()
+          setselectedsubAppointmentType()
+          setselectedAppointmentType()
+          setTaxYear()
+          actions.addAlert({ title: "Please Wait ", message: "Appointment is Getting Booked Right Now All the Form Information is Cleared", type: "warning" })
+          
           
           const FormMap = Object.entries(e.targetValue)
           const arrayOfObjectsValues = Object.values(e.targetValue);
@@ -758,41 +757,42 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                       likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
                       legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
                       duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost).properties.hs_standard_time_zone,
-                      firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, formFields: [{ name: 'Meeting Description', value: "\n" + MeetingDescription + "\n"+"\n"+"Meeting Type: " + selectedsubAppointmentType + "\n" +"\n"+  MeetingAddress + "\n" +"\n"+  PhoneNumber + "\n" }],
+                      firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, 
                     }
-                    await runServerless({ name: 'bookMeeting', parameters: { bookingInfo: bookingInfo } }).then(
-                      async (BookMeetingResponse) => {
+
+                    
+                  
 
                         //run create an appointment and create associations
 
-                        console.log("wait is over searching for the meeting activity");
-                        actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
                         setWorking(!working)
                         setAvailability()
-                        
-                        //
-                        // await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context.crm, BookMeetingResponse, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone }] }).then(
-                        //   async (serverlessResponse) => {
-                        //     if (serverlessResponse.status == 'SUCCESS') {
-                        //       console.log(serverlessResponse)
-                        //       console.log(selectedContact)
-                        //       setWorking(!working)
-                        //       await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id, context.crm, selectedContact, BookMeetingResponse.response.calendarEventId] }).then(
-                        //         (serverlessResponse) => {
-                        //           if (serverlessResponse.status == 'SUCCESS') {
-                        //             console.log(Object.keys(serverlessResponse))
-                        //             console.log(serverlessResponse.response)
-                        //             setWorking(!working)
-                        //             actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
-                        //           }
-                        //         }
+                        await runServerless({ name: 'getBookerId', parameters: [context] }).then(
+                          async (booker) => {
+                        console.log(booker)
+                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:booker.response },bookingInfo] }).then(
+                          async (serverlessResponse) => {
+                            if (serverlessResponse.status == 'SUCCESS') {
+                              console.log(serverlessResponse)
+                              console.log(selectedContact)
+                              setWorking(!working)
+                              await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id, context, selectedContact, {}] }).then(
+                                (serverlessResponse) => {
+                                  if (serverlessResponse.status == 'SUCCESS') {
+                                    console.log(Object.keys(serverlessResponse))
+                                    console.log(serverlessResponse.response)
+                                    setWorking(!working)
+                                    actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
+                                  }
+                                }
 
-                        //       );
+                              );
 
-                        //     }
-                        //   }
-                        // );
+                            }
+                          }
+                        );
                       })
+                      
                     // selected Host case
                   } else {
                     console.log({
@@ -805,38 +805,44 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                       likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
                       legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
                       duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost.label).properties.hs_standard_time_zone,
-                      firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, formFields: [{ name: 'Meeting Description', value: "\n" + MeetingDescription + "\n"+"\n"+"Meeting Type: " + selectedsubAppointmentType + "\n" +"\n"+ MeetingAddress + "\n" +"\n" + PhoneNumber + "\n" +"\n" }]
+                      firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, 
                     }
-                    await runServerless({ name: 'bookMeeting', parameters: { bookingInfo: bookingInfo } }).then(
-                      (BookMeetingResponse) => {
-                        console.log(BookMeetingResponse.response.calendarEventId)
+                    
+                    
+                        
                         actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
                         setWorking(!working)
                         setAvailability()
                         //run create an appointment and create associations
-                        // setTimeout(async () => {
-                        //   console.log("wait is over searching for the meeting activity");
-                        //   await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue] }).then(
-                        //     async (createAppointmentResponse) => {
-                        //       if (createAppointmentResponse.status == 'SUCCESS') {
-
-                        //         await runServerless({ name: 'createAssociation', parameters: [createAppointmentResponse.response.id, context.crm, selectedContact, BookMeetingResponse.response.calendarEventId] }).then(
-                        //           (AssociationResponse) => {
-                        //             if (AssociationResponse.status == 'SUCCESS') {
-                        //               console.log(Object.keys(AssociationResponse))
-                        //               console.log(AssociationResponse.response)
-                        //               setWorking(!working)
-                        //               actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
-                        //             }
-                        //           }
-
-                        //         );
-
-                        //       }
-                        //     }
-                        //   );
-                        // }, 5000);
-                      })
+                        await runServerless({ name: 'getBookerId', parameters: [context] }).then(
+                          async (booker) => {
+                        console.log(booker.response)
+                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:booker.response },bookingInfo] }).then(
+                              async (createAppointmentResponse) => {
+                                if (createAppointmentResponse.status == 'SUCCESS') {
+  
+                                  await runServerless({ name: 'createAssociation', parameters: [createAppointmentResponse.response.id, context, selectedContact, {}] }).then(
+                                    (AssociationResponse) => {
+                                      if (AssociationResponse.status == 'SUCCESS') {
+                                        console.log(Object.keys(AssociationResponse))
+                                        console.log(AssociationResponse.response)
+                                        setWorking(!working)
+                                        
+                                      }
+                                    }
+  
+                                  );
+  
+                                }
+                              }
+                            );
+                        
+                          }
+                        )
+                          
+                          
+                        
+                      
                   }
                   console.log("meeting activity is created ")
                   //time out function to wait for the meeting activity to log 
@@ -858,6 +864,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                 name="AppointmentType"
                 label="Appointment Type"
                 options={appointmentType}
+                value={selectedAppointmentType}
                 onChange={(e) => handleTypeSelection(e)}
                 variant="primary"
                 buttonSize="md"

@@ -37,6 +37,10 @@
     "getHubDB": {
       "file": "fbc_get_hubDB.js",
       "secrets": []
+    },
+    "getBookerId": {
+      "file": "fbc-get-bookerId.js",
+      "secrets": []
     }
   }
 }
