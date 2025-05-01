@@ -61,7 +61,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [selectContactOptions, setSelectContactOptions] = useState([]);
   const [appointmentType, setAppointmentType] = useState([]);
   const [selectedAppointmentType, setselectedAppointmentType] = useState();
-  const [appointmentSubType, setAppointmentSubType] = useState([{ option: "subTypeTest", value: "subTypeTest" }]);
+  const [appointmentSubType, setAppointmentSubType] = useState();
   const [selectedsubAppointmentType, setselectedsubAppointmentType] = useState();
   const [AllSubAppointmentType, setAllSubAppointmentType] = useState();
   const [MeetingLoction, setMeetingLocation] = useState([]);
@@ -211,6 +211,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           console.log(HostsObjectArray)
           setHosts(HostsObjectArray)
           console.log(selectedHost)
+          setSelectedHost(HostsObjectArray.find(obj => obj.label == selectedHost))
           setTimeZone(HostsObjectArray.find(obj => obj.label == selectedHost).properties.hs_standard_time_zone)
         }
       }
@@ -376,26 +377,42 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         )
       }
       if (allAvailabilities[cDuration]) {
-
+        let rightObject = Hosts.find((element) => element.value == selectedHost.label)
+        setSelectedHost(rightObject)
+        await runServerless({ name: 'getUserInformation', parameters: { context: context, monthOffset: date.month - new Date().getMonth(), Host: rightObject } }).then(
+          (serverlessResponse) => {
+            setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
+        console.log(allAvailabilities)
+        let availabilitiesObjectArray= serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration[cDuration].availabilities
         console.log(availabilitiesObjectArray)
+        availabilitiesObjectArray.map(obj => (obj.value = obj.startMillisUtc, obj.label = new Date(obj.startMillisUtc).toString()))
+
         setAvailability(availabilitiesObjectArray
           .filter(obj => new Date(obj.startMillisUtc).getFullYear() === date.year && new Date(obj.startMillisUtc).getMonth() === date.month && new Date(obj.startMillisUtc).getDate() === date.date))
         console.log(availabilitiesObjectArray
           .filter(obj => new Date(obj.startMillisUtc).getFullYear() === date.year && new Date(obj.startMillisUtc).getMonth() === date.month && new Date(obj.startMillisUtc).getDate() === date.date))
-      } else {
+        })
+        } else {
         let availabilitiesObjectArray = []
+        await runServerless({ name: 'getUserInformation', parameters: { context: context, monthOffset: date.month - new Date().getMonth(), Host: rightObject } }).then(
+          (serverlessResponse) => {
+            setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
         let durations = Object.keys(allAvailabilities)
         for (let Duration of durations) {
-          let ObjectArray = allAvailabilities[Duration].availabilities
+          let ObjectArray = serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration[Duration].availabilities
           ObjectArray.map(obj => (obj.value = obj.startMillisUtc, obj.label = new Date(obj.startMillisUtc).toString()))
           availabilitiesObjectArray.push(...ObjectArray)
         }
+        availabilitiesObjectArray.map(obj => (obj.value = obj.startMillisUtc, obj.label = new Date(obj.startMillisUtc).toString()))
+
         setAvailability(availabilitiesObjectArray
           .filter(obj => new Date(obj.startMillisUtc).getFullYear() === date.year && new Date(obj.startMillisUtc).getMonth() === date.month && new Date(obj.startMillisUtc).getDate() === date.date))
 
         console.log(availabilitiesObjectArray
           .filter(obj => new Date(obj.startMillisUtc).getFullYear() === date.year && new Date(obj.startMillisUtc).getMonth() === date.month && new Date(obj.startMillisUtc).getDate() === date.date))
-      }
+        })
+        }
+      
     }}else{
       console.log("no date selected!")
     }
@@ -709,10 +726,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         <Form onSubmit={async (e) => {
           // 2d array index 0 is the property name and index 1 is the value 
           //[[propertyname, value],[...]]
-          setMeetingLocation()
-          setselectedsubAppointmentType()
-          setselectedAppointmentType()
-          setTaxYear()
+          
           actions.addAlert({ title: "Please Wait ", message: "Appointment is Getting Booked Right Now All the Form Information is Cleared", type: "warning" })
           
           
@@ -739,7 +753,11 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                 setWorking(!working)
               }
               else {
-
+                setMeetingLocation()
+            setselectedsubAppointmentType()
+            setselectedAppointmentType()
+           setTaxYear()
+            setAppointmentSubType()
                 // check if the availability is valid       
                 if (availability.find((obj) => obj.value == pickedTime)) {
 
@@ -767,10 +785,10 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
 
                         setWorking(!working)
                         setAvailability()
-                        await runServerless({ name: 'getBookerId', parameters: [context] }).then(
-                          async (booker) => {
-                        console.log(booker)
-                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:booker.response },bookingInfo] }).then(
+                        await runServerless({ name: 'getBookerId', parameters: [context, selectedHost] }).then(
+                          async(owners ) => {
+                        console.log(owners)
+                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker },bookingInfo] }).then(
                           async (serverlessResponse) => {
                             if (serverlessResponse.status == 'SUCCESS') {
                               console.log(serverlessResponse)
@@ -814,10 +832,10 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                         setWorking(!working)
                         setAvailability()
                         //run create an appointment and create associations
-                        await runServerless({ name: 'getBookerId', parameters: [context] }).then(
-                          async (booker) => {
-                        console.log(booker.response)
-                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:booker.response },bookingInfo] }).then(
+                        await runServerless({ name: 'getBookerId', parameters: [context, selectedHost] }).then(
+                          async(owners ) => {
+                            console.log(owners)
+                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker },bookingInfo] }).then(
                               async (createAppointmentResponse) => {
                                 if (createAppointmentResponse.status == 'SUCCESS') {
   

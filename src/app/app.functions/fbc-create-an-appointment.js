@@ -47,7 +47,8 @@ exports.main = async (context = {}) => {
     "fbc_appointment_api_infos": JSON.stringify(context.parameters[5]),
     "contact_phone_number": context.parameters[0].phone,
     "contacts_address":context.parameters[0].address,
-    "fbc_appointment_booker":context.parameters[4].Booker
+    "fbc_appointment_booker":context.parameters[4].Booker,
+    "hubspot_owner_id":context.parameters[4].Owner
   };
   
 //  //514 is ad hoc association to the account 
