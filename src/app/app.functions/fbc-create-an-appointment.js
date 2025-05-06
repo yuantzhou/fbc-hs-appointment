@@ -38,7 +38,8 @@ exports.main = async (context = {}) => {
     "appointment_start": `${new Date (StartTime).toISOString()}`,
      "appointment_end":`${new Date (endTime).toISOString()}`,
     "appointment_duration": duration/60000,
-    "appointment_type_free_text": context.parameters[1].AppointmentType,
+   "fbc_appointment_sub_type": `${context.parameters[1]["Appointment Sub Type"]}`,
+   "fbc_appointment_main_type": `${context.parameters[1]["AppointmentType"]}`,
     "appointment_deadline_date_time": new Date(deadline).toISOString(),
     "meeting_description":`${context.parameters[1]["MeetingDesciption"]}`,
     "meeting_location": context.parameters[1].PreferredMeetingLocation,
@@ -48,7 +49,7 @@ exports.main = async (context = {}) => {
     "contact_phone_number": context.parameters[0].phone,
     "contacts_address":context.parameters[0].address,
     "fbc_appointment_booker":context.parameters[4].Booker,
-    "hubspot_owner_id":context.parameters[4].Owner
+    "hubspot_owner_id":context.parameters[4].Owner,
   };
   
 //  //514 is ad hoc association to the account 

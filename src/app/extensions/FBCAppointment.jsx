@@ -288,6 +288,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     if (!date) {
       setAvailability()
     } else {
+      setAvailability()
       setSelectedDate(date)
       // console.log(date.month-new Date().getMonth())
       // console.log(selectedHost)
@@ -727,7 +728,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           // 2d array index 0 is the property name and index 1 is the value 
           //[[propertyname, value],[...]]
           
-          actions.addAlert({ title: "Please Wait ", message: "Appointment is Getting Booked Right Now All the Form Information is Cleared", type: "warning" })
+          //actions.addAlert({ title: "Please Wait ", message: "Appointment is Getting Booked Right Now All the Form Information is Cleared", type: "warning" })
           
           
           const FormMap = Object.entries(e.targetValue)
@@ -746,18 +747,19 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             } else {
               console.log(arrayOfObjectsValues)
               console.log(availability)
-              let checkDup = await runServerless({ name: 'checkDuplicate', parameters: [selectedContact, e.targetValue] })
-              console.log(checkDup)
-              if (!checkDup.response) {
-                actions.addAlert({ title: "Error Message", message: "There is an Appointment already existing", type: "danger" })
-                setWorking(!working)
-              }
-              else {
+              // let checkDup = await runServerless({ name: 'checkDuplicate', parameters: [selectedContact, e.targetValue] })
+              // console.log(checkDup)
+              // // if (!checkDup.response) {
+              // //   actions.addAlert({ title: "Error Message", message: "There is an Appointment already existing", type: "danger" })
+              // //   setWorking(!working)
+              // // }
+              // // else {
                 setMeetingLocation()
             setselectedsubAppointmentType()
             setselectedAppointmentType()
            setTaxYear()
             setAppointmentSubType()
+            setSelectedHost()
                 // check if the availability is valid       
                 if (availability.find((obj) => obj.value == pickedTime)) {
 
@@ -774,7 +776,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                     let bookingInfo = {
                       likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
                       legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
-                      duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost).properties.hs_standard_time_zone,
+                      duration: cDuration, startTime: pickedTime, timezone: TimeZone,
                       firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, 
                     }
 
@@ -816,13 +818,13 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                     console.log({
                       likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
                       legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
-                      duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost.label).properties.hs_standard_time_zone,
+                      duration: cDuration, startTime: pickedTime, timezone: TimeZone,
                       firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug
                     })
                     let bookingInfo = {
                       likelyAvailableUserIds: bookingUserInfo.likelyAvailableUserIds,
                       legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
-                      duration: cDuration, startTime: pickedTime, timezone: Hosts.find(obj => obj.label == selectedHost.label).properties.hs_standard_time_zone,
+                      duration: cDuration, startTime: pickedTime, timezone: TimeZone,
                       firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, 
                     }
                     
@@ -872,7 +874,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                   actions.addAlert({ title: "Error Message", message: "Pick a Valid Time!", type: "danger" })
                   setWorking(!working)
                 }
-              }
+            //}CheckDup block
             }
           }
         }}>
@@ -950,6 +952,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             onChange={(value) => {
               setMeetingLocation(value);
             }}
+            value={MeetingLoction}
             variant="primary"
             buttonSize="md"
             buttonText="More"
