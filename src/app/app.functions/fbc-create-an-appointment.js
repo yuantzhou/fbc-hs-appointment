@@ -50,6 +50,7 @@ exports.main = async (context = {}) => {
     "contacts_address":context.parameters[0].address,
     "fbc_appointment_booker":context.parameters[4].Booker,
     "hubspot_owner_id":context.parameters[4].Owner,
+    "meeting_ouctome": "Scheduled"
   };
   
 //  //514 is ad hoc association to the account 

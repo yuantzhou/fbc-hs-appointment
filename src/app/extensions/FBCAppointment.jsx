@@ -30,6 +30,7 @@ import {
 } from "@hubspot/ui-extensions";
 import { CrmActionButton } from '@hubspot/ui-extensions/crm';
 import { setDefaultLocale } from "react-datepicker";
+import Time from "react-datepicker/dist/time";
 
 
 // Define the extension to be run within the Hubspot CRM
@@ -75,7 +76,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [bookingUserInfo, setBookingUserInfo] = useState();
   const [formattedYear, setFormattedYear] = useState();
   const [defaultSlug, setDefaultSlug] = useState();
-  const [TimeZone, setTimeZone] = useState();
+  const [TimeZone, setTimeZone] = useState(context.portal.timezone);
   const [MeetingType, setMeetingType] = useState();
   const [MeetingAddress, setMeetingAddress] = useState("Meeting At ");
   const [PhoneNumber, setPhoneNumber] = useState();
@@ -83,43 +84,34 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [TimeZoneOptions, setTimeZoneOptions] = useState([
     {
       label: '(UTC-08:00) Pacific Time - Vancouver',
-      onClick: () => setTimeZone('(UTC-08:00)')
+      onClick: () => {setDate(selectedDate) 
+        setTimeZone('Canada/Pacific')}
+      
     },
     {
       label: '(UTC-07:00) Mountain Time - Edmonton',
-      onClick: () => setTimeZone('(UTC-07:00)')
+      onClick: () => {setDate(selectedDate)
+        setTimeZone('Canada/Mountain')}
     },
     {
       label: '(UTC-06:00) Central Time - Winnipeg',
-      onClick: () => setTimeZone('(UTC-06:00)')
+      onClick: () => {setDate(selectedDate)
+        setTimeZone('Canada/Central')}
     },
     {
       label: '(UTC-05:00) Eastern Time - Toronto',
-      onClick: () => setTimeZone('(UTC-05:00)')
+      onClick: () => {setDate(selectedDate)
+        setTimeZone('Canada/Eastern')}
     },
     {
-      label: '(UTC-04:00) Atlantic Time - Halifax',
-      onClick: () => setTimeZone('(UTC-04:00)')
+      label: '(UTC-04:00) Canada/Atlantic',
+      onClick: () => {setDate(selectedDate)
+        setTimeZone('Canada/Atlantic')}
     },
     {
       label: "(UTC-03:30) Newfoundland Time - St. John's",
-      onClick: () => setTimeZone('(UTC-03:30)')
-    },
-    {
-      label: '(UTC-07:00) Mountain Time - Yellowknife',
-      onClick: () => setTimeZone('(UTC-07:00)')
-    },
-    {
-      label: '(UTC-06:00) Central Time - Regina (no DST)',
-      onClick: () => setTimeZone('(UTC-06:00)')
-    },
-    {
-      label: '(UTC-05:00) Eastern Time - Iqaluit',
-      onClick: () => setTimeZone('(UTC-05:00)')
-    },
-    {
-      label: '(UTC-05:00) Eastern Time - Montreal',
-      onClick: () => setTimeZone('(UTC-05:00)')
+      onClick: () => {setDate(selectedDate)
+        setTimeZone('Canada/Newfoundland')}
     }
   ]
   )
@@ -213,6 +205,9 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           console.log(selectedHost)
           setSelectedHost(HostsObjectArray.find(obj => obj.label == selectedHost))
           setTimeZone(HostsObjectArray.find(obj => obj.label == selectedHost).properties.hs_standard_time_zone)
+          if(HostsObjectArray.find(obj => obj.label == selectedHost).properties.hs_standard_time_zone==null){
+            setTimeZone(context.portal.timezone)
+          }
         }
       }
     );
@@ -221,7 +216,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   //get User and calendar availability use today's date as default range of avaliablity 
   //default parameters
   useEffect(async () => {
-    await runServerless({ name: 'getUserInformation', parameters: { context: context } }).then(
+    await runServerless({ name: 'getUserInformation', parameters: { context: context,TimeZone:context.portal.timezone } }).then(
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
           console.log(serverlessResponse.response.response)
@@ -283,7 +278,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     if(date){
     console.log(date)
     
-    console.log("check if cDuration" +cDuration)
+    console.log("check if cDuration " +cDuration)
     setPickedTime()
     if (!date) {
       setAvailability()
@@ -296,7 +291,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
 
       let availabilitiesObjectArray
       if (selectedHost == context.user.firstName + " " + context.user.lastName) {
-        await runServerless({ name: 'getUserInformation', parameters: { context: context, monthOffset: date.month - new Date().getMonth() } }).then(
+        await runServerless({ name: 'getUserInformation', parameters: { context: context,TimeZone:context.portal.timezone, monthOffset: (date.year-new Date().getFullYear())*12 +date.month - new Date().getMonth() } }).then(
           (serverlessResponse) => {
             if (serverlessResponse.status == 'SUCCESS') {
               setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
@@ -318,10 +313,10 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                 }
               } else {
                 let availabilitiesObjectArray = []
-                let durations = Object.keys(allAvailabilities)
-                console.log(allAvailabilities)
+                let durations = Object.keys(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
+                console.log(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
                 for (let Duration of durations) {
-                  let ObjectArray = allAvailabilities[Duration].availabilities
+                  let ObjectArray = serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration[Duration].availabilities
                   ObjectArray.map(obj => (obj.value = obj.startMillisUtc, obj.label = new Date(obj.startMillisUtc).toString()))
                   availabilitiesObjectArray.push(...ObjectArray)
                 }
@@ -345,11 +340,11 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         setSelectedHost(rightObject)
         //console.log(selectedHost)
 
-        await runServerless({ name: 'getUserInformation', parameters: { context: context, monthOffset: date.month - new Date().getMonth(), Host: rightObject } }).then(
+        await runServerless({ name: 'getUserInformation', parameters: { context: context,TimeZone:context.portal.timezone, monthOffset: (date.year-new Date().getFullYear())*12 +date.month - new Date().getMonth(), Host: rightObject } }).then(
           (serverlessResponse) => {
             if (serverlessResponse.status == 'SUCCESS') {
               setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
-
+              console.log(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
               console.log(cDuration)
               if (cDuration) {
                 let availabilitiesObjectArray = allAvailabilities[cDuration].availabilities
@@ -363,7 +358,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                 let availabilitiesObjectArray = []
                 let durations = Object.keys(allAvailabilities)
                 for (let Duration of durations) {
-                  let ObjectArray = allAvailabilities[Duration].availabilities
+                  let ObjectArray = serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration[Duration].availabilities
                   ObjectArray.map(obj => (obj.value = obj.startMillisUtc, obj.label = new Date(obj.startMillisUtc).toString()))
                   availabilitiesObjectArray.push(...ObjectArray)
                 }
@@ -380,7 +375,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
       if (allAvailabilities[cDuration]) {
         let rightObject = Hosts.find((element) => element.value == selectedHost.label)
         setSelectedHost(rightObject)
-        await runServerless({ name: 'getUserInformation', parameters: { context: context, monthOffset: date.month - new Date().getMonth(), Host: rightObject } }).then(
+        await runServerless({ name: 'getUserInformation', parameters: { context: context,TimeZone:context.portal.timezone, monthOffset: (date.year-new Date().getFullYear())*12 +date.month - new Date().getMonth(), Host: rightObject } }).then(
           (serverlessResponse) => {
             setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
         console.log(allAvailabilities)
@@ -395,7 +390,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         })
         } else {
         let availabilitiesObjectArray = []
-        await runServerless({ name: 'getUserInformation', parameters: { context: context, monthOffset: date.month - new Date().getMonth(), Host: rightObject } }).then(
+        await runServerless({ name: 'getUserInformation', parameters: { context: context,TimeZone:context.portal.timezone, monthOffset: (date.year-new Date().getFullYear())*12 +date.month - new Date().getMonth(), Host: rightObject } }).then(
           (serverlessResponse) => {
             setAllAvailability(serverlessResponse.response.response.linkAvailability.linkAvailabilityByDuration)
         let durations = Object.keys(allAvailabilities)
@@ -454,13 +449,13 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     let rightObject = Hosts.find((element) => element.value == Host)
     setSelectedHost(rightObject)
     console.log(rightObject)
-    if (rightObject.properties.hs_standard_time_zone) {
+    if (rightObject.properties.hs_standard_time_zone!=null) {
       setTimeZone(rightObject.properties.hs_standard_time_zone)
     } else {
-      setTimeZone("This Host Doesn't a Time Zone Configured")
+      setTimeZone(context.portal.timezone)
     }
 
-    runServerless({ name: 'getUserInformation', parameters: { context: context, Host: rightObject } }).then(
+    runServerless({ name: 'getUserInformation', parameters: { context: context, Host: rightObject,TimeZone:context.portal.timezone } }).then(
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
           let response = serverlessResponse.response.response
@@ -516,6 +511,19 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         }
       })
   }
+  const handleClickURL = () => {
+    console.log(selectedHost)
+    openIframe(
+      {
+        uri: `https://outlook.office.com/calendar/view/workweek?itemid=AAMkADRmZTJmMjNjLTMwMTktNDA2NS1iMzJkLTZkYzJlMjEzNTBiNgBGAAAAAAD3V5GcfBspRJM2%2BSjNvk3cBwBEF9OFWlYESaiFzRoMzWuuAAAAAAENAABEF9OFWlYESaiFzRoMzWuuAABAO0tzAAA%3D&exvsurl=1`,
+        height: 2000,
+        width: 2000,
+        title: 'Calendar',
+        flush: true,
+      },
+      () => console.log('This message will display upon closing the modal.')
+    );
+  };
   const handleAvailability = (TimeOption) => {
 
     setPickedTime(TimeOption)
@@ -604,8 +612,6 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         return <Tile>
           <Input label="Meeting Title"
             name="Meeting Title" value={Meetingtitle}></Input>
-          <Input label="Meeting Type"
-            name="MeetingType" value="Phone Call"></Input>
           <TextArea onBlur={e => setMeetingDescription(`${e}`)} label="Meeting Desciption"
             name="MeetingDesciption" value="" placeholder="Message for our Member to see"></TextArea>
           <Input label="Phone Number"
@@ -630,9 +636,6 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     }
     return result;
   }
-
-
-
 
   const renderAvailableTime = () => {
     if (availability) {
@@ -661,34 +664,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
       return
     }
   }
-  // const openMeetingLinkInterface = () => {
-  //   console.log(selectedHost)
-  //   console.log(defaultSlug)
-  //   if (selectedHost == context.user.firstName + " " + context.user.lastName) {
-  //     openIframe({
-  //       uri: `https://fbcmm2v3-test.azurewebsites.net/AppointmentsV2Page/rtse`, // this is a relative link. Some links will be blocked since they don't allow iframing
-  //       height: 1000,
-  //       width: 1000,
-  //       title: 'Meeting Interface',
-  //       flush: true,
-
-  //     }, () => console.log('This message will display upon closing the modal.')
-  //     );
-  //   }
-  //   else {
-  //     openIframe({
-  //       uri: `https://fbcmm2v3-test.azurewebsites.net/AppointmentsV2Page/rtse`, // this is a relative link. Some links will be blocked since they don't allow iframing
-  //       height: 1000,
-  //       width: 1000,
-  //       title: 'Meeting Interface',
-  //       flush: true,
-
-  //     }, () => console.log('This message will display upon closing the modal.')
-  //     );
-  //   }
-
-  // };
-
+ 
   const handleTypeSelection = (e) => {
     setselectedsubAppointmentType()
     setselectedAppointmentType(e)
@@ -729,22 +705,31 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
           //[[propertyname, value],[...]]
           
           //actions.addAlert({ title: "Please Wait ", message: "Appointment is Getting Booked Right Now All the Form Information is Cleared", type: "warning" })
+          console.log(TimeZone)
           
           
           const FormMap = Object.entries(e.targetValue)
           const arrayOfObjectsValues = Object.values(e.targetValue);
           const arrayOfObjectsKeys = Object.keys(e.targetValue);
           console.log(selectedContact)
+          
           if (!selectedContact.contactId) {
             actions.addAlert({ title: "Error Message", message: "Pick a Contact", type: "danger" })
             setWorking(!working)
           } else {
+            
             console.log("there is a contact")
             if (arrayOfObjectsValues.includes('') || yearIsValid == false) {
               // get addAlert from action package
               actions.addAlert({ title: "Error Message", message: "Fill out the Form Information", type: "danger" })
               setWorking(!working)
             } else {
+              if(TimeZone=="This Host Doesn't a Time Zone Configured"){
+            actions.addAlert({ title: "Error Message", message: "Pick a TimeZone please", type: "danger" })
+            setWorking(!working)
+          }else{
+            
+          
               console.log(arrayOfObjectsValues)
               console.log(availability)
               // let checkDup = await runServerless({ name: 'checkDuplicate', parameters: [selectedContact, e.targetValue] })
@@ -779,10 +764,6 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                       duration: cDuration, startTime: pickedTime, timezone: TimeZone,
                       firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, 
                     }
-
-                    
-                  
-
                         //run create an appointment and create associations
 
                         setWorking(!working)
@@ -796,18 +777,10 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                               console.log(serverlessResponse)
                               console.log(selectedContact)
                               setWorking(!working)
-                              await runServerless({ name: 'createAssociation', parameters: [serverlessResponse.response.id, context, selectedContact, {}] }).then(
-                                (serverlessResponse) => {
-                                  if (serverlessResponse.status == 'SUCCESS') {
-                                    console.log(Object.keys(serverlessResponse))
+                              console.log(Object.keys(serverlessResponse))
                                     console.log(serverlessResponse.response)
                                     setWorking(!working)
                                     actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
-                                  }
-                                }
-
-                              );
-
                             }
                           }
                         );
@@ -826,13 +799,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                       legalConsentResponses: [{ communicationTypeId: '302269988', consented: true }],
                       duration: cDuration, startTime: pickedTime, timezone: TimeZone,
                       firstName: selectedContact.firstname, lastName: selectedContact.lastname, email: selectedContact.email, slug: bookingUserInfo.slug, 
-                    }
-                    
-                    
-                        
-                        actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
-                        setWorking(!working)
-                        setAvailability()
+                    }                     
                         //run create an appointment and create associations
                         await runServerless({ name: 'getBookerId', parameters: [context, selectedHost] }).then(
                           async(owners ) => {
@@ -840,34 +807,22 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                         await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker },bookingInfo] }).then(
                               async (createAppointmentResponse) => {
                                 if (createAppointmentResponse.status == 'SUCCESS') {
-  
-                                  await runServerless({ name: 'createAssociation', parameters: [createAppointmentResponse.response.id, context, selectedContact, {}] }).then(
-                                    (AssociationResponse) => {
-                                      if (AssociationResponse.status == 'SUCCESS') {
-                                        console.log(Object.keys(AssociationResponse))
-                                        console.log(AssociationResponse.response)
+                                        console.log(Object.keys(createAppointmentResponse))
+                                        console.log(createAppointmentResponse.response)
                                         setWorking(!working)
-                                        
-                                      }
-                                    }
-  
-                                  );
-  
-                                }
+                                        actions.addAlert({ title: "Success!", message: "Appointment Has Been Created!", type: "success" })
+                                        setWorking(!working)
+                                        setAvailability()
                               }
+                            }
                             );
                         
                           }
                         )
-                          
-                          
-                        
-                      
+
                   }
                   console.log("meeting activity is created ")
-                  //time out function to wait for the meeting activity to log 
-
-                  //createAppointment first then create assoication after with the created appointment Id, because hubspot is broken
+       
 
                 }
                 else {
@@ -875,14 +830,14 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                   setWorking(!working)
                 }
             //}CheckDup block
-            }
+            }}
           }
         }}>
           <Flex direction={'row'} gap={'extra-large'} alignSelf={'start'}>
             <Box flex={1} alignSelf="end">
               <Select
                 name="AppointmentType"
-                label="Appointment Type"
+                label="Meeting Type"
                 options={appointmentType}
                 value={selectedAppointmentType}
                 onChange={(e) => handleTypeSelection(e)}
@@ -894,7 +849,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             <Box flex={1} alignSelf="end">
               <Select
                 name="Appointment Sub Type"
-                label="Appointment Sub Type"
+                label="Meeting Sub Type"
                 options={appointmentSubType}
                 value={selectedsubAppointmentType}
                 onChange={(e) => setselectedsubAppointmentType(e)}
@@ -945,6 +900,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
               ></Select>
             </Box>
           </Flex>
+
           <Select
             label="Preferred Meeting Location?"
             name="PreferredMeetingLocation"
@@ -961,114 +917,49 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             renderLocation()
           }
 
-
+<Flex direction={'row'} gap={'extra-large'} alignSelf={'start'}>
+<Box flex={1} alignSelf="end">
           <DateInput name="StartDate" label="Date" required="true" onChange={(e) => setDate(e)} defaultValue={defaultDate}
             min={{ year: new Date().getFullYear(), month: new Date().getMonth(), date: new Date().getDate() }}
-            max={{ year: new Date().getFullYear() + 1, month: new Date().getMonth() + 6, date: new Date().getDate() }}
+            max={{ year: new Date().getFullYear() + 1, month: new Date().getMonth() + 1, date: new Date().getDate() }}
             format="YYYY-MM-DD" />
-          <Dropdown
-            options={TimeZoneOptions}
-            variant="transparent"
-            buttonSize="md"
-            buttonText={TimeZone}
-          />
-
+            </Box>
+            <Box flex={1} alignSelf="end">
+            <Button onClick={handleClickURL}>View Host's calendar</Button>
+            </Box>
+            
+            </Flex>
+            
+          <Text format={{ italic: true }}>The Times are Configured to The Bowsers TimeZone, It will translate to the TimeZone of the Reps Calendar</Text>
 
           <Flex justify={'center'}>
             <Text format={{ fontWeight: 'bold' }}>Available Duration</Text>
           </Flex>
+
           <Table bordered={false} paginated={false} flush={false} >
-
-
             <TableBody>
-
               {
                 renderDurationList()
               }
-
             </TableBody>
-
-
           </Table>
-
-
-
-
-
-
-
-          {/* <Button onClick={openMeetingLinkInterface}>
-            MeetingTimeInterface
-          </Button> */}
-
-
-
-
-          {/* <NumberInput name="StartHour" label="StartHour" description="(24Hour Format 0=MidNight)" required="true" min={0} max={23} />
-          <NumberInput name="StartMinute" label="StartMinute" required="true" min={0} max={59}  /> */}
-
-          {/* <Select
-         label="Duration"
-          name="Duration"
-          description="in Minutes"
-          value={cDuration}
-          // defaultvalue={{value:10800000, label:180}}
-            onChange={(e)=>changeDuration(e)}
-            options={Duration}
-            variant="primary"
-            buttonSize="md"
-            buttonText="More"
-          ></Select> */}
-
-
-
-
-
-          {/* <Select
-         label="Pick a Time"
-          name="PickATime"
-          value={pickedTime}
-            options={availability}
-            onChange={(e)=>handleAvailability(e)}
-            variant="primary"
-            buttonSize="md"
-            buttonText="More"
-          ></Select>   */}
-
 
           <Flex justify={'center'}>
             <Text format={{ fontWeight: 'bold' }}>Available Times</Text>
           </Flex>
 
           <Table bordered={false} paginated={false} flush={true}>
-
-
-
             <TableBody>
-
               {
                 renderAvailableTime()
               }
-
             </TableBody>
-
-          </Table>
-          {/* <Flex direction="row" wrap="wrap" gap="extra-small" alignSelf="center">
-            {
-              renderAvailableTime()
-            }
-</Flex> */}
+          </Table>        
           <Divider />
           {SubmitButton()}
         </Form>
-
-        {/* <Text ref={Ref}>write something here</Text> */}
+        
       </Tile>
-
-
-
-
-
     </>
   );
 };
