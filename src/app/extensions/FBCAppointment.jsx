@@ -17,8 +17,6 @@ import {
   Select,
   LoadingSpinner,
   Divider,
-  List,
-  ButtonRow,
   Box,
   TextArea, Table,
   TableHead,
@@ -26,11 +24,11 @@ import {
   TableHeader,
   TableBody,
   TableCell,
+   Panel, PanelBody, PanelSection, PanelFooter,
+   Link
 
 } from "@hubspot/ui-extensions";
-import { CrmActionButton } from '@hubspot/ui-extensions/crm';
-import { setDefaultLocale } from "react-datepicker";
-import Time from "react-datepicker/dist/time";
+
 
 
 // Define the extension to be run within the Hubspot CRM
@@ -41,18 +39,12 @@ hubspot.extend(({ context, runServerlessFunction, actions }) => (
     sendAlert={actions}
     actions={actions}
     openIframe={actions.openIframeModal}
-
   />
 ));
 
 
 // Define the Extension component, taking in runServerless, context, & sendAlert as props
 const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) => {
-  const {
-    fetchCrmObjectProperties,
-    onCrmPropertiesUpdate,
-    refreshObjectProperties,
-  } = actions;
   //console.log(context)
   const inputRef = useRef();
   //const [properties, setProperties] = useState<Record<string, string>> ({});
@@ -74,47 +66,45 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [selectedHost, setSelectedHost] = useState(context.user.firstName + " " + context.user.lastName);
   const [allAvailabilities, setAllAvailability] = useState();
   const [bookingUserInfo, setBookingUserInfo] = useState();
-  const [formattedYear, setFormattedYear] = useState();
   const [defaultSlug, setDefaultSlug] = useState();
   const [TimeZone, setTimeZone] = useState(context.portal.timezone);
-  const [MeetingType, setMeetingType] = useState();
   const [MeetingAddress, setMeetingAddress] = useState("Meeting At ");
   const [PhoneNumber, setPhoneNumber] = useState();
   const [MeetingDescription, setMeetingDescription] = useState()
-  const [TimeZoneOptions, setTimeZoneOptions] = useState([
-    {
-      label: '(UTC-08:00) Pacific Time - Vancouver',
-      onClick: () => {setDate(selectedDate) 
-        setTimeZone('Canada/Pacific')}
+  // const [TimeZoneOptions, setTimeZoneOptions] = useState([
+  //   {
+  //     label: '(UTC-08:00) Pacific Time - Vancouver',
+  //     onClick: () => {setDate(selectedDate) 
+  //       setTimeZone('Canada/Pacific')}
       
-    },
-    {
-      label: '(UTC-07:00) Mountain Time - Edmonton',
-      onClick: () => {setDate(selectedDate)
-        setTimeZone('Canada/Mountain')}
-    },
-    {
-      label: '(UTC-06:00) Central Time - Winnipeg',
-      onClick: () => {setDate(selectedDate)
-        setTimeZone('Canada/Central')}
-    },
-    {
-      label: '(UTC-05:00) Eastern Time - Toronto',
-      onClick: () => {setDate(selectedDate)
-        setTimeZone('Canada/Eastern')}
-    },
-    {
-      label: '(UTC-04:00) Canada/Atlantic',
-      onClick: () => {setDate(selectedDate)
-        setTimeZone('Canada/Atlantic')}
-    },
-    {
-      label: "(UTC-03:30) Newfoundland Time - St. John's",
-      onClick: () => {setDate(selectedDate)
-        setTimeZone('Canada/Newfoundland')}
-    }
-  ]
-  )
+  //   },
+  //   {
+  //     label: '(UTC-07:00) Mountain Time - Edmonton',
+  //     onClick: () => {setDate(selectedDate)
+  //       setTimeZone('Canada/Mountain')}
+  //   },
+  //   {
+  //     label: '(UTC-06:00) Central Time - Winnipeg',
+  //     onClick: () => {setDate(selectedDate)
+  //       setTimeZone('Canada/Central')}
+  //   },
+  //   {
+  //     label: '(UTC-05:00) Eastern Time - Toronto',
+  //     onClick: () => {setDate(selectedDate)
+  //       setTimeZone('Canada/Eastern')}
+  //   },
+  //   {
+  //     label: '(UTC-04:00) Canada/Atlantic',
+  //     onClick: () => {setDate(selectedDate)
+  //       setTimeZone('Canada/Atlantic')}
+  //   },
+  //   {
+  //     label: "(UTC-03:30) Newfoundland Time - St. John's",
+  //     onClick: () => {setDate(selectedDate)
+  //       setTimeZone('Canada/Newfoundland')}
+  //   }
+  // ]
+  // )
   //current availiablity array
   const [availability, setAvailability] = useState();
   const [working, setWorking] = useState(true);
@@ -129,6 +119,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [yearIsValid, setYearIsValid] = useState(true);
   const [HostValidationMessage, setHostValidationMessage] = useState('');
   const [HostIsValid, setHostIsValid] = useState(true);
+  const [Holidays,setHolidays ] = useState([]);
 
   //get AssociatedContacts
   useEffect(async () => {
@@ -151,9 +142,6 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             let CleanOptions = serverlessResponse.response.filter((element) => element.type == "contact_to_fbc_accounts")
             setSelectContactOptions(CleanOptions);
           }
-
-
-
         }
       }
     );
@@ -162,12 +150,14 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
 
   //get information from hubDB
   useEffect(() => {
-    runServerless({ name: 'getHubDB' ,parameters: { Tables:["meeting_types","meeting_sub_types"] }}).then(
+    runServerless({ name: 'getHubDB' ,parameters: { Tables:["meeting_types","meeting_sub_types","current_year_holidays","users_table"] }}).then(
       (serverlessResponse) => {
         if (serverlessResponse.status == 'SUCCESS') {
           console.log(serverlessResponse.response)
           let MeetingTypes=[]
           let SubMeetingTypes=[]
+          let holidays=[]
+          let Userinfo=[]
           for (let table of serverlessResponse.response){
             if(table.TableName== "meeting_types")
             {
@@ -178,10 +168,30 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             if(table.TableName== "meeting_sub_types")
               {
                 for(let row of table.Rows ){
-                  SubMeetingTypes.push({MainMeetingType:row.values.meeting_type_code.label,SubMeetingType:row.values.meeting_sub_type, value:row.values.meeting_sub_type, label:row.values.meeting_sub_type})
+                  SubMeetingTypes.push({MainMeetingType:row.values.meeting_type_code.label,SubMeetingType:row.values.meeting_sub_type, value:row.values.meeting_sub_type, label:row.values.meeting_sub_type,recurring_period:row.values.recurring_period.label })
+                }
+              }
+            if(table.TableName== "current_year_holidays")
+              {
+                for(let row of table.Rows ){
+                  holidays.push({Date:row.values.date,holiday_name:row.values.holiday_name,province:row.values.province })
+                }
+              }
+            if(table.TableName== "users_table")
+              {
+                for(let row of table.Rows ){
+                  Userinfo.push({businessemailaddress:row.values.businessemailaddress,provstatename:row.values.provstatename,firstname:row.values.firstname,lastname:row.values.lastname })
                 }
               }
           }
+          let userProvince =Userinfo.find(obj=>obj.businessemailaddress==context.user.email).provstatename
+          let PHolidays= holidays.filter(obj=> obj.province==userProvince)
+           for(let holiday of PHolidays){
+              holiday.holidayStart=new Date(holiday.Date).getTime()
+              holiday.holidayEnd=new Date(holiday.Date).getTime()+86400000
+            }
+            setHolidays(PHolidays)
+            console.log(PHolidays)
           console.log(MeetingTypes)
           setAppointmentType(MeetingTypes)
           console.log(SubMeetingTypes)
@@ -277,7 +287,10 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const setDate = async (date) => {
     if(date){
     console.log(date)
-    
+    if(Holidays.find(obj=>obj.Date==date.formattedDate)){
+      setAvailability()
+      actions.addAlert({ title: "Error Message", message: "Don't Book on a Holiday", type: "danger" })
+    }else{
     console.log("check if cDuration " +cDuration)
     setPickedTime()
     if (!date) {
@@ -409,9 +422,11 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         })
         }
       
-    }}else{
+    }}
+  }else{
       console.log("no date selected!")
     }
+  
   };
   //on Duration Change
   const changeDuration = (duration, e) => {
@@ -515,7 +530,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
     console.log(selectedHost)
     openIframe(
       {
-        uri: `https://outlook.office.com/calendar/view/workweek?itemid=AAMkADRmZTJmMjNjLTMwMTktNDA2NS1iMzJkLTZkYzJlMjEzNTBiNgBGAAAAAAD3V5GcfBspRJM2%2BSjNvk3cBwBEF9OFWlYESaiFzRoMzWuuAAAAAAENAABEF9OFWlYESaiFzRoMzWuuAABAO0tzAAA%3D&exvsurl=1`,
+        uri: `https://fbccalendarempapp.azurewebsites.net/scheduler-features/${selectedHost.properties.hs_email}`,
         height: 2000,
         width: 2000,
         title: 'Calendar',
@@ -668,6 +683,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const handleTypeSelection = (e) => {
     setselectedsubAppointmentType()
     setselectedAppointmentType(e)
+    console.log(e)
     setAppointmentSubType(AllSubAppointmentType.filter(obj=> obj.MainMeetingType==e))
   }
   return (
@@ -771,7 +787,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                         await runServerless({ name: 'getBookerId', parameters: [context, selectedHost] }).then(
                           async(owners ) => {
                         console.log(owners)
-                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker },bookingInfo] }).then(
+                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker, recurring_period: AllSubAppointmentType.find(obj => obj.label==selectedsubAppointmentType).recurring_period },bookingInfo] }).then(
                           async (serverlessResponse) => {
                             if (serverlessResponse.status == 'SUCCESS') {
                               console.log(serverlessResponse)
@@ -804,7 +820,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                         await runServerless({ name: 'getBookerId', parameters: [context, selectedHost] }).then(
                           async(owners ) => {
                             console.log(owners)
-                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker },bookingInfo] }).then(
+                        await runServerless({ name: 'createAppointment', parameters: [selectedContact, e.targetValue, context, {}, { Duration: cDuration, PickedTime: pickedTime, TimeZone: TimeZone, Booker:owners.response.booker, Owner: owners.response.AppointmentBooker,recurring_period: AllSubAppointmentType.find(obj => obj.label==selectedsubAppointmentType).recurring_period },bookingInfo] }).then(
                               async (createAppointmentResponse) => {
                                 if (createAppointmentResponse.status == 'SUCCESS') {
                                         console.log(Object.keys(createAppointmentResponse))
@@ -852,7 +868,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                 label="Meeting Sub Type"
                 options={appointmentSubType}
                 value={selectedsubAppointmentType}
-                onChange={(e) => setselectedsubAppointmentType(e)}
+                onChange={(e) => {setselectedsubAppointmentType(e)}}
                 variant="primary"
                 buttonSize="md"
                 buttonText="More"
@@ -925,7 +941,9 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             format="YYYY-MM-DD" />
             </Box>
             <Box flex={1} alignSelf="end">
-            <Button onClick={handleClickURL}>View Host's calendar</Button>
+           
+       <Button onClick={handleClickURL}>View Host's Calendar</Button>
+      
             </Box>
             
             </Flex>
