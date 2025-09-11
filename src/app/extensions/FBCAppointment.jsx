@@ -60,7 +60,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [MeetingLoction, setMeetingLocation] = useState([]);
   const [TaxYear, setTaxYear] = useState();
 
-  const [PreferredMeetingLocation, setPreferredMeetingLocation] = useState([{ option: "Virtual", value: "Virtual" }, { option: "In Person", value: "In Person" }, { option: "Phone Call", value: "Phone Call" }, { option: "Custom", value: "Custom" }]);
+  const [PreferredMeetingLocation, setPreferredMeetingLocation] = useState([{label: "Video Call", value: "Virtual" }, { label: "In Person", value: "In Person" }, { label: "Phone Call", value: "Phone Call" }, ]);
   const [Hosts, setHosts] = useState([]);
   const [selectedDate, setSelectedDate] = useState({ formattedDate: new Date().toISOString().substring(0, 10) });
   const [selectedHost, setSelectedHost] = useState(context.user.firstName + " " + context.user.lastName);
@@ -71,40 +71,7 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [MeetingAddress, setMeetingAddress] = useState("Meeting At ");
   const [PhoneNumber, setPhoneNumber] = useState();
   const [MeetingDescription, setMeetingDescription] = useState()
-  // const [TimeZoneOptions, setTimeZoneOptions] = useState([
-  //   {
-  //     label: '(UTC-08:00) Pacific Time - Vancouver',
-  //     onClick: () => {setDate(selectedDate) 
-  //       setTimeZone('Canada/Pacific')}
-      
-  //   },
-  //   {
-  //     label: '(UTC-07:00) Mountain Time - Edmonton',
-  //     onClick: () => {setDate(selectedDate)
-  //       setTimeZone('Canada/Mountain')}
-  //   },
-  //   {
-  //     label: '(UTC-06:00) Central Time - Winnipeg',
-  //     onClick: () => {setDate(selectedDate)
-  //       setTimeZone('Canada/Central')}
-  //   },
-  //   {
-  //     label: '(UTC-05:00) Eastern Time - Toronto',
-  //     onClick: () => {setDate(selectedDate)
-  //       setTimeZone('Canada/Eastern')}
-  //   },
-  //   {
-  //     label: '(UTC-04:00) Canada/Atlantic',
-  //     onClick: () => {setDate(selectedDate)
-  //       setTimeZone('Canada/Atlantic')}
-  //   },
-  //   {
-  //     label: "(UTC-03:30) Newfoundland Time - St. John's",
-  //     onClick: () => {setDate(selectedDate)
-  //       setTimeZone('Canada/Newfoundland')}
-  //   }
-  // ]
-  // )
+ 
   //current availiablity array
   const [availability, setAvailability] = useState();
   const [working, setWorking] = useState(true);
@@ -122,7 +89,8 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
   const [Holidays,setHolidays ] = useState([]);
 
   //get AssociatedContacts
-  useEffect(async () => {
+  
+useEffect(async () => {
     console.log(context)
     await runServerless({ name: 'getAssociatedContacts', parameters: { objectId: accountId } }).then(
       (serverlessResponse) => {
@@ -138,6 +106,17 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
             let CleanOptions = serverlessResponse.response.filter((element) => element.type == "contact_to_fbc_accounts" && element.value != PContact.value)
             CleanOptions.push(PContact)
             setSelectContactOptions(CleanOptions);
+            runServerless({name: 'emailValidation', parameters: {email:PContact.email}}).then(
+              (serverlessResponse) => {
+              console.log(serverlessResponse)
+              if(serverlessResponse.response.email_deliverability.status=="undeliverable"||PContact.email.includes("fbcnoemail.com")||PContact.email.includes("noemail.com")){
+                actions.addAlert({ title: "Client Invalid Email Message", message: "This contact doesn't have a valid email address", type: "warning" })
+                setMeetingLocation("In Person")
+                setPreferredMeetingLocation([{ label: "In Person", value: "In Person" }])
+              }
+                
+            }
+            )
           } else {
             let CleanOptions = serverlessResponse.response.filter((element) => element.type == "contact_to_fbc_accounts")
             setSelectContactOptions(CleanOptions);
@@ -145,8 +124,9 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         }
       }
     );
-
   }, []);
+  
+  
 
   //get information from hubDB
   useEffect(() => {
@@ -447,11 +427,24 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
         .filter(obj => new Date(obj.startMillisUtc).getFullYear() === selectedDate.year && new Date(obj.startMillisUtc).getMonth() === selectedDate.month && new Date(obj.startMillisUtc).getDate() === selectedDate.date))
     }
   };
-  const handleSelectedContact = (contactName) => {
+  const handleSelectedContact = async(contactName) => {
     console.log(selectContactOptions)
     let rightObject = selectContactOptions.find((element) => element.value == contactName)
     setSelectedContact(rightObject)
     console.log(selectedContact)
+      await runServerless({ name: 'emailValidation', parameters: {email:rightObject.email}}).then(
+          (serverlessResponse) => {
+              console.log(serverlessResponse)
+              console.log(rightObject.email)
+              if(serverlessResponse.response.email_deliverability.status=="undeliverable"||rightObject.email.includes("fbcnoemail.com")||rightObject.email.includes("noemail.com")){
+                actions.addAlert({ title: "Client Invalid Email Message", message: "This contact doesn't have a valid email address", type: "warning" })
+                setMeetingLocation("In Person")
+                setPreferredMeetingLocation([{ label: "In Person", value: "In Person" }])
+              }else{
+                setPreferredMeetingLocation(([{label: "Video Call", value: "Virtual" }, { label: "In Person", value: "In Person" }, { label: "Phone Call", value: "Phone Call" } ]))
+                setMeetingLocation()
+              }
+          })
     setMeetingAddress(`Meeting Address: ${rightObject.address}`)
     setPhoneNumber(`Contact Number:  ${rightObject.phone}`)
     // setBookingInformation({likelyAvailableUserIds:[selectedHost.allUsersBusyTimes[0].meetingsUser.id.toString()],
@@ -755,15 +748,9 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
               // //   setWorking(!working)
               // // }
               // // else {
-                setMeetingLocation()
-            setselectedsubAppointmentType()
-            setselectedAppointmentType()
-           setTaxYear()
-            setAppointmentSubType()
-            setSelectedHost()
+                
                 // check if the availability is valid       
                 if (availability.find((obj) => obj.value == pickedTime)) {
-
                   console.log("valid entry")
                   console.log(Hosts[0])
                   console.log(bookingUserInfo)
@@ -839,12 +826,20 @@ const Extension = ({ context, runServerless, sendAlert, actions, openIframe }) =
                   }
                   console.log("meeting activity is created ")
        
+                  setMeetingLocation()
+            setselectedsubAppointmentType()
+            setselectedAppointmentType()
+           setTaxYear()
+            setAppointmentSubType()
+            setSelectedHost()
+                
+                  
 
-                }
-                else {
-                  actions.addAlert({ title: "Error Message", message: "Pick a Valid Time!", type: "danger" })
+                }else{
+                    actions.addAlert({ title: "Error Message", message: "Pick a Valid Time!", type: "danger" })
                   setWorking(!working)
                 }
+                
             //}CheckDup block
             }}
           }

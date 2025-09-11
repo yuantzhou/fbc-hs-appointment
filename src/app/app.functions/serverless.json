@@ -41,6 +41,10 @@
     "getBookerId": {
       "file": "fbc-get-bookerId.js",
       "secrets": []
+    },
+    "emailValidation": {
+      "file": "email-valid.js",
+      "secrets": []
     }
   }
 }

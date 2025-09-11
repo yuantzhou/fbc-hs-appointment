@@ -6,6 +6,7 @@ exports.main = async (context = {}) => {
     let after=0
     do{
 let response = await axios.get
+//KEY Parameter properties=hs_internal_user_id this is the one that's going to be the 'likelyAvailableUserIds'
 (`https://api.hubapi.com/crm/v3/objects/users?limit=100&after=${after}&properties=hs_internal_user_id&properties=hs_searchable_calculated_name&properties=hs_email&properties=hs_standard_time_zone&archived=false`, 
         {
         headers: {
